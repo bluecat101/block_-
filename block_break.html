@@ -46,14 +46,14 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
   </div>
 
 <script>
-const N = 5;//個体数
+const N = 10;//個体数
 var individual = new Array(N);
 const chrom = 1000;//遺伝子数
 var GENERATION;
 const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"
 const CROSSING_TYPE = "double" //--- "single","double"
 var FRAME_RATE = 1;
-const NUMBER_OF_CROSSOVER = 32; // 2の累乗
+const NUM_OF_CHILD = 8; // 2の累乗
 var best =new Array(2);
 var is_view;
 var is_finish = false;
@@ -158,7 +158,7 @@ var is_finish = false;
     p.y += p.vy;
 
     //バーを動かす
-    if(!is_view || count_ge > GENERATION){
+    if(!is_view || count_ge == GENERATION){
       moveBar(individual[best[1]]);
     }else{
       moveBar(individual[count_n]);
@@ -334,6 +334,17 @@ var is_finish = false;
   function record(){
     score_array[count_n] = score;
     count_n++;
+    if(count_ge == GENERATION){
+      is_finish = true;
+      tmp_best = getBestIn(individual);
+      best = [tmp_best[0],tmp_best[1]];
+      count_ge = GENERATION;
+      // console.log(best);
+      count_n = best[1];
+      // console.log(count_n);
+      // clearTimeout(timer);
+      return;
+    }
     if(count_n == N){
       count_ge++;
       evolve();
@@ -343,16 +354,7 @@ var is_finish = false;
         score_array[i] = 0;
       }
     }
-    if(count_ge > GENERATION){
-      is_finish = true;
-      tmp_best = getBestIn(individual);
-      best = [tmp_best[0],tmp_best[1]];
-      count_ge = GENERATION;
-      // console.log(best);
-      count_n = best[1];
-      // console.log(count_n);
-      // clearTimeout(timer);
-    }
+    
   }
 
   var count_n = 0;
@@ -464,9 +466,8 @@ var is_finish = false;
           eval[n] = evaluation(individual[n]);
         }
         var sorted_eval = selfSort(eval)
-        const CHILDLEN = NUMBER_OF_CROSSOVER;
-        var child = new Array(CHILDLEN);
-        for(var n=0;n<CHILDLEN;n++){
+        var child = new Array(NUM_OF_CHILD);
+        for(var n=0;n<NUM_OF_CHILD;n++){
             child[n] = new Array(chrom);
         };
         
