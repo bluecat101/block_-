@@ -20,7 +20,7 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
 #graph2{ cursor: pointer;}
 #data{ position: relative; top: 410px;}
 .setting{ position: relative; left: 20px;}
-#generation{ width: 100px; font-size: inherit;}
+.status{ width: 70px; font-size: inherit;}
 .button{ font-size: inherit;}
 
 </style>
@@ -31,42 +31,50 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
 <canvas id='graph2'></canvas> <!-- ブロック-->
 <div id='data'>
     <!-- <input type='checkbox' id='resetEverytime' checked>落ちたらリセット<br> -->
-    <span>世代</span></br>
+    <span>状態</span></br>
     <div class="setting">
-    <input type="text" id="generation" value="5">世代</br>
-    <input type='button' class='button' id='quickTry' value='描画せずに実行'>
-    <input type="button" class='button' id="try" value="描画して実行">
-    <input type="button" class='button' id="reset" value="リセット"></br>
+      世代数 <input type="text" id="generation" class="status" value="">
+      個体数 <input type="text" id="individual" class="status" value="">
+      遺伝子数  <input type="text" id="chrom" class="status" value="">
+    </div>
+    <span>実行</span></br>
+    <div class="setting">
+      <input type='button' class='button' id='quickTry' value='描画せずに実行'>
+      <input type="button" class='button' id="try" value="描画して実行">
+      <input type="button" class='button' id="reset" value="リセット"></br>
     </div>
     <span>速度(FrameRate)</span></br>
     <div class="setting">
-    <input type="text" id="frameRate" value="10">
-    <input type='button' class='button' id='frameRateDecide' value='決定'></br>
-    <input type='button' class='button' id='slow' value='<<遅く'>
-    <input type="button" class='button' id="fast" value="速く>>"></br>
-    <input type="button" class='button' id="save" value="保存"></br>
-    
+      <input type="text" id="frameRate" value="">
+      <input type='button' class='button' id='frameRateDecide' value='決定'></br>
+      <input type='button' class='button' id='slow' value='<<遅く'>
+      <input type="button" class='button' id="fast" value="速く>>"></br>
+      <input type="button" class='button' id="save" value="保存"></br>
     </div>
   </div>
 
 <script>
-const N = 100;//個体数
+var N = 100;//個体数
 var individual = new Array(N);
-const chrom = 1000;//遺伝子数
+var chrom = 1000;//遺伝子数
 var GENERATION = 100;
 const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"
 const CROSSOVER_TYPE = "single" //--- "single","double"
-var FRAME_RATE = 1;
+var FRAME_RATE = 40;
 const NUM_OF_CHILD =32; // 2の累乗
 var best =new Array(2);
 var isFinish = false;
 var record = [];
+// var recordIndevidual = [];
 
 (function(){
   
   //バーを動かす関数
   function moveBar(In){
-      var action = In[numberOfFrames];
+    if(numberOfFrames%10 != 0){
+      return;
+    }
+      var action = In[numberOfFrames/10];
       // if(action==0) reward += 10;
       var tempX = bar.x+action*30; //左右に30ピクセルまたは動かない
       if (tempX<p.r) tempX = p.r; //左の壁に当たったら、それ以上左へは行かない
@@ -75,8 +83,11 @@ var record = [];
   };
 
   function d(ID){ return document.getElementById(ID);}
-  d("frameRate").value = FRAME_RATE;
   d("generation").value = GENERATION;
+  d("individual").value = N;
+  d("chrom").value = chrom;
+  d("frameRate").value = FRAME_RATE;
+
   var timer;
   var paused = false, gameOver = false, gameEnded = true;
   // var numberOfBalls = 0; //使用したボールの数
@@ -270,17 +281,20 @@ var record = [];
       count_n = best[1];
       return;
     }
-
-    score_array[count_n] = score;
+    tmp = [score,numberOfFrames];
+    recordIndevidual[count_n] = tmp;
+    // score_array[count_n] = score;
+    // record[count_n] = score;
     count_n++;
     if(count_n == N){
       evolve();
       count_ge++;
       //--- 初期化
       count_n = 0;
-      for(var i=0;i<N;i++){
-        score_array[i] = 0;
-      }
+      console.log(recordIndevidual);
+      // for(var i=0;i<N;i++){
+      //   score_array[i] = 0;
+      // }
     }
     
   }
@@ -323,16 +337,8 @@ var record = [];
           else if (p_bar<=bar.L-bar.edge/3) X *= (p_bar-bar.L+bar.edge)/100; //0～0.3（バーの端は約73°）
           else X *= 0.3;
           var distance = Math.abs(p.x-bar.x);
-          // console.log(distance);
-          // if(distance <= bar.L){
-            // reward += 1;
-            numberOfBreakedBlock +=1;
-            score += 1;
-          // }else{
-          //   // console.log("no't");
-          //   reward += 5/distance;
-          // }
-          // reward += 
+          numberOfBreakedBlock +=1;
+          score += 1;
           var L = Math.sqrt(X*X+1); //法線ベクトルの長さ
           var vec = {x: X/L, y: 1/L}; //法線ベクトルの正規化
           var dot = vec.x*p.vx+vec.y*p.vy;
@@ -345,11 +351,13 @@ var record = [];
             p.vx = (p.vx<0) ? -p.vy*1.5 : p.vy*1.5;
           }
         }else if (p.y<p.r){ // ゲームオーバー
-          break;
+          break;      
         };
       };
       numberOfFrames++;
     };
+    tmp = [score,numberOfFrames];
+    recordIndevidual[count_n] = tmp;
   };
 
     //遺伝的アルゴリズム
@@ -373,7 +381,7 @@ var record = [];
   var count_n;
   var count_ge;
   var numberOfBreakedBlock;
-  var score_array;
+  var recordIndevidual;
   
   // 実行された時の処理
   document.getElementById("try").addEventListener("click", function(){
@@ -402,6 +410,8 @@ var record = [];
         if(CHOICE_TYPE == "MGG-rulet"){    
           if(best[0]>1500){ //--- 目標値に達成しているかどうか
             console.log("break");
+            console.log(record.slice(-1));
+            console.log(recordIndevidual);
             count_n = best[1];
             count_ge = GENERATION;
             // saveCSV(record);
@@ -412,6 +422,8 @@ var record = [];
             count_ge=0;
           };
         }else{
+          console.log(record.slice(-1));
+          console.log(recordIndevidual);
           console.log("finish_calculate");
           // isFinish = true;
           count_n = best[1];
@@ -421,13 +433,14 @@ var record = [];
         }
       };
       evolve();
+      count_n=0;
       count_ge++;
     };
   },false);
 
 
   function evolve(){
-    console.log("evolve");
+    // console.log("evolve");
     var parent = new Array(2);
     if(CHOICE_TYPE != "MGG-rulet"){    
       for(var i=0;i<2;i++){
@@ -444,10 +457,6 @@ var record = [];
         const CHILDLEN = 10;//2+2^3
         var child = MGG_crossover(CHILDLEN,r1,r2,individual);
         var sortedChildEval = sortEvaluation(child);
-        // var child_eval = new Array(CHILDLEN);
-        // for(var n=0;n<CHILDLEN;n++){
-        //   child_eval[n] = evaluation(child[n]);
-        // };
         var select = MGG_choice(CHILDLEN,sortedChildEval);
         //最も評価の高い個体の番号を取得
         // var sortedEval=selfSort(child_eval);
@@ -458,12 +467,6 @@ var record = [];
       //---　評価
       //--- 最大値の取得
       var sortedEval = sortEvaluation(individual);
-      // var eval = new Array(N);
-      // //---　各個体の評価値を取得
-      // for(var n=0;n<N;n++){
-      //   eval[n] = evaluation(individual[n]);
-      // }
-      // var sortedEval = selfSort(eval)
       var child = new Array(NUM_OF_CHILD);
       for(var n=0;n<NUM_OF_CHILD;n++){
           child[n] = new Array(chrom);
@@ -492,7 +495,6 @@ var record = [];
       };
     };
     saveTmp(sortedEval);
-
   }
 
 
@@ -500,6 +502,7 @@ var record = [];
   function evaluation(In){
     score = 0;
     numberOfBreakedBlock = 0;
+    count_n++;
     reset();
     calculate(In);//個体がゲームをする
     return score//ブロック崩しのスコアを与える
@@ -535,19 +538,22 @@ var record = [];
     }
     var average = total/N;
     tmpArray = [count_ge,sortedEval[0][0],sortedEval[sortedEval.length-1][0],average];
-    console.log(tmpArray);
     record.push(tmpArray);
   }
   function init(){
-    GENERATION = parseInt(document.getElementById("generation").value); //--- 世代数
+    GENERATION = parseInt(d("generation").value); //--- 世代数
+    N = parseInt(d("individual").value); //--- 
+    chrom = parseInt(d("chrom").value); //--- 
     getTime();
     count_n = 0;
     count_ge = 1;
     numberOfBreakedBlock = 0;
-    score_array = new Array(N);
-    for(var i=0;i<N;i++){
-      score_array[i] = 0;
-    }
+    recordIndevidual = new Array(N);
+    // recordEndFrame = new Array(N);
+    // for(var i=0;i<N;i++){
+    //   score_array[i] = 0;
+    //   recordEndFrame[i] =0;
+    // }
   }
 
   function initWithChrom(){
