@@ -13,6 +13,9 @@ function single_crossover(child,parent){
   }
   
   function double_crossover(child,parent){
+    var rand1 = Math.floor(Math.random()*chrom);
+    var rand2 = rand1 + Math.floor(Math.random()*(chrom-rand1));//0<=rand1<rand2<1000
+    // console.log(rand1,rand2);
     //二点交叉
     for(var c=0;c<chrom;c++){
         if(c<rand1){

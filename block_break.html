@@ -32,7 +32,7 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
     <!-- <input type='checkbox' id='resetEverytime' checked>落ちたらリセット<br> -->
     <span>世代</span></br>
     <div class="setting">
-    <input type="text" id="times" value="10">世代</br>
+    <input type="text" id="times" value="5">世代</br>
     <input type='button' class='button' id='quickTry' value='描画せずに実行'>
     <input type="button" class='button' id="try" value="描画して実行"></br>
     </div>
@@ -46,12 +46,12 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
   </div>
 
 <script>
-const N = 500;//個体数
+const N = 5;//個体数
 var individual = new Array(N);
 const chrom = 1000;//遺伝子数
 var GENERATION;
-const CHOICE_TYPE = "MGG-rulet" //--- "elite","MGG-rulet"
-const CROSSING_TYPE = "one" //--- "one","two"
+const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"
+const CROSSING_TYPE = "double" //--- "single","double"
 var FRAME_RATE = 1;
 const NUMBER_OF_CROSSOVER = 32; // 2の累乗
 var best =new Array(2);
@@ -464,7 +464,7 @@ var is_finish = false;
           eval[n] = evaluation(individual[n]);
         }
         var sorted_eval = selfSort(eval)
-        const CHILDLEN = 2;
+        const CHILDLEN = NUMBER_OF_CROSSOVER;
         var child = new Array(CHILDLEN);
         for(var n=0;n<CHILDLEN;n++){
             child[n] = new Array(chrom);
@@ -475,8 +475,8 @@ var is_finish = false;
         else if(CHOICE_TYPE == "rulet"){rulet(parent,eval,individual);}
 
         //--- 交叉
-        if(CROSSING_TYPE == "one"){single_crossover(child,parent)}
-        else if(CROSSING_TYPE == "tow"){double_crossover(child,parent)}
+        if(CROSSING_TYPE == "single"){single_crossover(child,parent)}
+        else if(CROSSING_TYPE == "double"){double_crossover(child,parent)}
         selection(child,individual,sorted_eval);
       }
 
@@ -498,8 +498,7 @@ var is_finish = false;
       eval[n] = evaluation(individual[n]);
     }
     var sorted_eval = selfSort(eval);
-    // console.log(eval);
-    // console.log(sorted_eval);
+
     best = [sorted_eval[0][0],sorted_eval[0][1]];
     return best;
   }
