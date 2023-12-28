@@ -1,7 +1,6 @@
 function single_crossover(child,parent){
   var rand = getRandoms(NUM_OF_CHILD/2);
   //--- 単一交叉
-  // var rand1 = Math.floor(Math.random()*chrom);
   for(var c=0;c<chrom;c++){
     for(var i=0;i<NUM_OF_CHILD/2;i++){
       if(c<rand[i]){

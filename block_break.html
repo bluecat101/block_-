@@ -32,7 +32,7 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
     <!-- <input type='checkbox' id='resetEverytime' checked>落ちたらリセット<br> -->
     <span>世代</span></br>
     <div class="setting">
-    <input type="text" id="times" value="5">世代</br>
+    <input type="text" id="times" value="1">世代</br>
     <input type='button' class='button' id='quickTry' value='描画せずに実行'>
     <input type="button" class='button' id="try" value="描画して実行"></br>
     </div>
@@ -51,7 +51,7 @@ var individual = new Array(N);
 const chrom = 1000;//遺伝子数
 var GENERATION;
 const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"
-const CROSSOVER_TYPE = "double" //--- "single","double"
+const CROSSOVER_TYPE = "single" //--- "single","double"
 var FRAME_RATE = 1;
 const NUM_OF_CHILD = 8; // 2の累乗
 var best =new Array(2);
@@ -158,7 +158,7 @@ var is_finish = false;
     p.y += p.vy;
 
     //バーを動かす
-    if(!is_view || count_ge == GENERATION){
+    if(is_finish){
       moveBar(individual[best[1]]);
     }else{
       moveBar(individual[count_n]);
@@ -251,10 +251,35 @@ var is_finish = false;
     g2.restore();
   };
 
+  function record(){
+    if(count_ge == GENERATION && count_n == N-1){
+      is_finish = true;
+      tmp_best = getBestIn(individual);
+      best = [tmp_best[0],tmp_best[1]];
+      count_ge = GENERATION;
+      console.log(best);
+      count_n = best[1];
+      return;
+    }
+
+    score_array[count_n] = score;
+    count_n++;
+    if(count_n == N){
+      count_ge++;
+      evolve();
+      //--- 初期化
+      count_n = 0;
+      for(var i=0;i<N;i++){
+        score_array[i] = 0;
+      }
+    }
+    
+  }
+
+
+
   console.log("start");
   var reward;
-
-
   //↓ここから計算用
   function calculate(In){ //--- 全ての個体に対して実行される
   //--- 全ての遺伝子に対して実行
@@ -331,31 +356,7 @@ var is_finish = false;
       };
   };
 
-  function record(){
-    score_array[count_n] = score;
-    count_n++;
-    if(count_ge == GENERATION){
-      is_finish = true;
-      tmp_best = getBestIn(individual);
-      best = [tmp_best[0],tmp_best[1]];
-      count_ge = GENERATION;
-      // console.log(best);
-      count_n = best[1];
-      // console.log(count_n);
-      // clearTimeout(timer);
-      return;
-    }
-    if(count_n == N){
-      count_ge++;
-      evolve();
-      //--- 初期化
-      count_n = 0;
-      for(var i=0;i<N;i++){
-        score_array[i] = 0;
-      }
-    }
-    
-  }
+
 
   var count_n = 0;
   var count_ge = 1;
@@ -364,13 +365,12 @@ var is_finish = false;
   for(var i=0;i<N;i++){
     score_array[i] = 0;
   }
+
+  // 実行された時の処理
   document.getElementById("try").addEventListener("click", function(){
-    GENERATION = document.getElementById("times").value; //--- 世代数
+    GENERATION = parseInt(document.getElementById("times").value); //--- 世代数
     is_view = true;
     gameEnded = false;
-    reset();
-    drawBG();
-    mainLoop();
     count_n = 0;
     count_ge = 1;
     score = 0;
@@ -378,10 +378,13 @@ var is_finish = false;
     for(var i=0;i<N;i++){
       score_array[i] = 0;
     }
+    reset();
+    drawBG();
+    mainLoop();
   })
 
   document.getElementById("quickTry").addEventListener("click", function(){
-    GENERATION = document.getElementById("times").value; //--- 世代数
+    GENERATION = parseInt(document.getElementById("times").value); //--- 世代数
     count_n = N;
     count_ge = GENERATION;
     is_view = false;
@@ -429,6 +432,7 @@ var is_finish = false;
 
 
   function evolve(){
+    console.log("evolve");
     var parent = new Array(2);
     if(CHOICE_TYPE != "MGG-rulet"){    
       for(var i=0;i<2;i++){
@@ -499,7 +503,6 @@ var is_finish = false;
       eval[n] = evaluation(individual[n]);
     }
     var sorted_eval = selfSort(eval);
-
     best = [sorted_eval[0][0],sorted_eval[0][1]];
     return best;
   }
