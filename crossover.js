@@ -25,8 +25,6 @@ function double_crossover(child,parent){
       rand_position++;
     }
     for(var i=0;i<NUM_OF_CHILD;i++){
-      // console.log(choiced_parent);
-      // console.log(child[i],parent[choiced_parent][c])
       child[i][c] = parent[choiced_parent][c];
       count++;
       if(count>=2**(rand_len-1-rand_position)){
@@ -39,16 +37,20 @@ function double_crossover(child,parent){
   child.pop();
 }
 function getRandoms(length){
+  // console.log("start"+"rand");
   var rand = new Array(length);
   for(var i=0;i<length;i++){
-    tmp = Math.floor(Math.random()*chrom);
+    // tmp = Math.floor(Math.random()*chrom);
     while(true){
+      tmp = Math.floor(Math.random()*chrom);
+      // console.log(tmp);
       if(!rand.includes(tmp)){
         rand[i] = tmp;
         break;
       }
     }
   }
+  // console.log(rand);
   return rand.sort(); 
 }
 
