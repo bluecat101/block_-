@@ -12,6 +12,7 @@
 <script src="selection.js"></script>
 <script src="crossover.js"></script>
 <script src="MGG.js"></script>
+<script src="save_csv.js"></script>
 <style type="text/css">
 
 body{ -moz-user-select: none; -webkit-user-select: none; -ms-user-select: none; font-size: 20px;}
@@ -32,7 +33,7 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
     <!-- <input type='checkbox' id='resetEverytime' checked>落ちたらリセット<br> -->
     <span>世代</span></br>
     <div class="setting">
-    <input type="text" id="times" value="1">世代</br>
+    <input type="text" id="times" value="5">世代</br>
     <input type='button' class='button' id='quickTry' value='描画せずに実行'>
     <input type="button" class='button' id="try" value="描画して実行"></br>
     </div>
@@ -46,7 +47,7 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
   </div>
 
 <script>
-const N = 10;//個体数
+const N = 100;//個体数
 var individual = new Array(N);
 const chrom = 1000;//遺伝子数
 var GENERATION;
@@ -55,15 +56,15 @@ const CROSSOVER_TYPE = "single" //--- "single","double"
 var FRAME_RATE = 1;
 const NUM_OF_CHILD = 8; // 2の累乗
 var best =new Array(2);
-var is_view;
-var is_finish = false;
+var isFinish = false;
+var record = [];
 
 (function(){
   
   //バーを動かす関数
   function moveBar(In){
       var action = In[numberOfFrames];
-      if(action==0) reward += 10;
+      // if(action==0) reward += 10;
       var tempX = bar.x+action*30; //左右に30ピクセルまたは動かない
       if (tempX<p.r) tempX = p.r; //左の壁に当たったら、それ以上左へは行かない
       else if (tempX>w-p.r) tempX = w-p.r; //右の壁に当たったらそれ以上右へは行かない
@@ -97,7 +98,7 @@ var is_finish = false;
   //bはブロック。b.xとb.yがともに配列で、xy座標を示す。wはwidthで幅、hはheightで高さ。全て同じ大きさの長方形
   var b = {x: [], y: [], w: 20, h: 10, color: '#88f'};
 
-  var score = 0;
+  var numberOfBreakedBlock  = 0;
 
   d('graph2').addEventListener('click',function(){
     if (gameEnded){
@@ -130,10 +131,10 @@ var is_finish = false;
         b.x.push(w/2-10*b.w+j*b.w*2);
         b.y.push(340-i*b.h*2);
     }
-    if(!is_finish){
-      record();
+    if(!isFinish){
+      next_individual();
     }
-    score = numberOfFrames = 0;
+    numberOfBreakedBlock  = score = numberOfFrames = 0;
     // score = numberOfBalls = numberOfFrames = 0;
   }
 
@@ -158,7 +159,7 @@ var is_finish = false;
     p.y += p.vy;
 
     //バーを動かす
-    if(is_finish){
+    if(isFinish){
       moveBar(individual[best[1]]);
     }else{
       moveBar(individual[count_n]);
@@ -182,6 +183,7 @@ var is_finish = false;
         }
       }
       if (hit){
+        numberOfBreakedBlock +=1;
         score += 10;
         b.x.splice(i,1); b.y.splice(i,1);
         drawBG(); // ブロックを再描画
@@ -205,6 +207,8 @@ var is_finish = false;
     if (p.y<p.r+bar.y){
       var p_bar = Math.abs(p.x-bar.x);
       if (!gameOver && p_bar<=bar.L){
+        score += 1;
+        drawBG();
         var X = (p.x>bar.x) ? 1 : -1; //衝突点のバーの法線ベクトル(X,1);
         if (p_bar<=bar.L-bar.edge) X = 0; //バーの中央
         else if (p_bar<=bar.L-bar.edge/3) X *= (p_bar-bar.L+bar.edge)/100; //0～0.3（バーの端は約73°）
@@ -238,9 +242,9 @@ var is_finish = false;
     g2.clearRect(0,0,w,h);
     g2.font = '20px Arial';
     g2.fillStyle = '#fff';
-    // g2.fillText('Balls:　'+numberOfBalls,15,25);
-    g2.fillText('世代数:　'+count_ge,120,25);
-    g2.fillText('個体番号:　'+(parseInt(count_n)+1),290,25);
+    g2.fillText('ブロック数:　'+numberOfBreakedBlock ,15,25);
+    g2.fillText('世代数:　'+count_ge,190,25);
+    g2.fillText('個体番号:　'+(parseInt(count_n)+1),310,25);
     g2.fillText('Score:　'+score,480,25);
     g2.save();
     g2.setTransform(1,0,0,-1,0,h);
@@ -251,11 +255,12 @@ var is_finish = false;
     g2.restore();
   };
 
-  function record(){
+  function next_individual(){
     if(count_ge == GENERATION && count_n == N-1){
-      is_finish = true;
-      tmp_best = getBestIn(individual);
-      best = [tmp_best[0],tmp_best[1]];
+      isFinish = true;
+      var sortedEval = sortEvaluation(individual);
+      saveTmp(sortedEval);
+      best = [sortedEval[0][0],sortedEval[0][1]];
       count_ge = GENERATION;
       console.log(best);
       count_n = best[1];
@@ -265,8 +270,8 @@ var is_finish = false;
     score_array[count_n] = score;
     count_n++;
     if(count_n == N){
-      count_ge++;
       evolve();
+      count_ge++;
       //--- 初期化
       count_n = 0;
       for(var i=0;i<N;i++){
@@ -279,7 +284,7 @@ var is_finish = false;
 
 
   console.log("start");
-  var reward;
+  var score = 0;
   //↓ここから計算用
   function calculate(In){ //--- 全ての個体に対して実行される
   //--- 全ての遺伝子に対して実行
@@ -296,7 +301,8 @@ var is_finish = false;
         }
         if (hit){
           score += 10;
-          reward += 10;
+          numberOfBreakedBlock +=1;
+          // reward += 10;
           b.x.splice(i,1); b.y.splice(i,1);
           if (b.x.length==0) break;
         }
@@ -315,7 +321,9 @@ var is_finish = false;
           var distance = Math.abs(p.x-bar.x);
           // console.log(distance);
           // if(distance <= bar.L){
-          //   reward += 5;
+            // reward += 1;
+            numberOfBreakedBlock +=1;
+            score += 1;
           // }else{
           //   // console.log("no't");
           //   reward += 5/distance;
@@ -360,7 +368,7 @@ var is_finish = false;
 
   var count_n = 0;
   var count_ge = 1;
-  var score = 0;
+  var numberOfBreakedBlock = 0;
   var score_array = new Array(N);
   for(var i=0;i<N;i++){
     score_array[i] = 0;
@@ -369,10 +377,11 @@ var is_finish = false;
   // 実行された時の処理
   document.getElementById("try").addEventListener("click", function(){
     GENERATION = parseInt(document.getElementById("times").value); //--- 世代数
-    is_view = true;
+    getTime();
     gameEnded = false;
     count_n = 0;
     count_ge = 1;
+    numberOfBreakedBlock  = 0;
     score = 0;
     score_array = new Array(N);
     for(var i=0;i<N;i++){
@@ -385,50 +394,47 @@ var is_finish = false;
 
   document.getElementById("quickTry").addEventListener("click", function(){
     GENERATION = parseInt(document.getElementById("times").value); //--- 世代数
-    count_n = N;
-    count_ge = GENERATION;
-    is_view = false;
+    getTime();
+    count_n = 0;
+    count_ge = 1;
+    isFinish = true;
 
     //操作をGENERATION回繰り返す
     
     for(var ge=0;ge<GENERATION;ge++){
       if (ge == GENERATION-1){
-        // //--- 最大値の取得
-        tmp_best = getBestIn(individual);
-        best = [tmp_best[0],tmp_best[1]];
+        var sortedEval = sortEvaluation(individual);
+        // // //--- 最大値の取得
+        // tmp_best = getBestIn(individual);
+        saveTmp(sortedEval);
+        best = [sortedEval[0][0],sortedEval[0][1]];
         console.log("best : ", best[0], best[1]); //--- 評価値と何番目の個体か
         if(CHOICE_TYPE == "MGG-rulet"){    
           if(best[0]>1500){ //--- 目標値に達成しているかどうか
             console.log("break");
-            is_finish = true;
             count_n = best[1];
+            count_ge = GENERATION;
+            saveCSV(record);
             break;
           }else{
             console.log("not break");
             ge = 0;
+            count_ge=0;
           };
+        }else{
+          console.log("finish_calculate");
+          // isFinish = true;
+          count_n = best[1];
+          count_ge = GENERATION;
+          saveCSV(record);
+          break;
         }
       };
       evolve();
+      count_ge++;
+
     };
   },false);
-
-  //誤差関数evaluation(個体[個体番号]) = ゲームスコア
-  function evaluation(In){
-    reward = 0;
-    reset();
-    calculate(In);//個体がゲームをする
-    return reward//ブロック崩しのスコアを与える
-  };
-
-  function selfSort(array){
-    var len = array.length;
-    var sort_array = new Array(len);
-    for(var i=0;i<len;i++){
-      sort_array[i] = [array[i],i];
-    }
-    return sort_array.sort(function(a,b){return(b[0]-a[0]);});			
-  }
 
 
   function evolve(){
@@ -441,70 +447,103 @@ var is_finish = false;
     }
     //選択と交叉
     if(CHOICE_TYPE == "MGG-rulet"){
-        const crossrate = 0.8;
-        if(crossrate>Math.random()){
-          //親選択
-          var r1 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
-          var r2 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
-          const CHILDLEN = 10;//2+2^3
-          var child = MGG_crossover(CHILDLEN,r1,r2,individual);
-          var child_eval = new Array(CHILDLEN);
-          for(var n=0;n<CHILDLEN;n++){
-            child_eval[n] = evaluation(child[n]);
-          };
-          var select = MGG_choice(CHILDLEN,child_eval);
-          //最も評価の高い個体の番号を取得
-          var sorted_eval=selfSort(child_eval);
-          var top = [sorted_eval[0][0],sorted_eval[0][1]];
-          MGG_selection(top,select,r1,r2,child,individual);
-        };
-      }
-            
-      //--- 選択-交叉
-      if(CHOICE_TYPE == "elite" || CHOICE_TYPE == "rulet"){
-        //---　評価
-        //--- 最大値の取得
-        var eval = new Array(N);
-        //---　各個体の評価値を取得
-        for(var n=0;n<N;n++){
-          eval[n] = evaluation(individual[n]);
-        }
-        var sorted_eval = selfSort(eval)
-        var child = new Array(NUM_OF_CHILD);
-        for(var n=0;n<NUM_OF_CHILD;n++){
-            child[n] = new Array(chrom);
-        };
-        
-        //--- 選択
-        if(CHOICE_TYPE == "elite" ){elite(parent,individual,sorted_eval);}
-        else if(CHOICE_TYPE == "rulet"){rulet(parent,eval,individual);}
-
-        //--- 交叉
-        if(CROSSOVER_TYPE == "single"){single_crossover(child,parent)}
-        else if(CROSSOVER_TYPE == "double"){double_crossover(child,parent)}
-        selection(child,individual,sorted_eval);
-      }
-
-      //突然変異
-      const mutantrate = 0.01;
-      for(var n=0;n<N;n++){
-        if(Math.random()<mutantrate){
-          var m = Math.floor(Math.random()*numberOfFrames);
-          var r3 = Math.floor(Math.random()*2); //--- 0 or 1
-          individual[n][m] = (individual[n][m]-r3)%3 - 1; //--- -1-> 0 or 1, 0-> -1 or 1, 1-> -1 or 0
-        };
+      const crossrate = 0.8;
+      if(crossrate>Math.random()){
+        //親選択
+        var r1 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
+        var r2 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
+        const CHILDLEN = 10;//2+2^3
+        var child = MGG_crossover(CHILDLEN,r1,r2,individual);
+        var sortedChildEval = sortEvaluation(child);
+        // var child_eval = new Array(CHILDLEN);
+        // for(var n=0;n<CHILDLEN;n++){
+        //   child_eval[n] = evaluation(child[n]);
+        // };
+        var select = MGG_choice(CHILDLEN,sortedChildEval);
+        //最も評価の高い個体の番号を取得
+        // var sortedEval=selfSort(child_eval);
+        var top = [sortedChildEval[0][0],sortedChildEval[0][1]];
+        MGG_selection(top,select,r1,r2,child,individual);
       };
-  }
-  function getBestIn(individual){
-    //--- 最大値の取得
-    var eval = new Array(N);
-    //---　各個体の評価値を取得
-    for(var n=0;n<N;n++){
-      eval[n] = evaluation(individual[n]);
+    }else if(CHOICE_TYPE == "elite" || CHOICE_TYPE == "rulet"){
+      //---　評価
+      //--- 最大値の取得
+      var sortedEval = sortEvaluation(individual);
+      // var eval = new Array(N);
+      // //---　各個体の評価値を取得
+      // for(var n=0;n<N;n++){
+      //   eval[n] = evaluation(individual[n]);
+      // }
+      // var sortedEval = selfSort(eval)
+      var child = new Array(NUM_OF_CHILD);
+      for(var n=0;n<NUM_OF_CHILD;n++){
+          child[n] = new Array(chrom);
+      };
+      
+      //--- 選択
+      if(CHOICE_TYPE == "elite" ){elite(parent,individual,sortedEval);}
+      else if(CHOICE_TYPE == "rulet"){rulet(parent,eval,individual);}
+      //--- 交叉
+      if(CROSSOVER_TYPE == "single"){single_crossover(child,parent)}
+      else if(CROSSOVER_TYPE == "double"){double_crossover(child,parent)}
+      selection(child,individual,sortedEval);
     }
-    var sorted_eval = selfSort(eval);
-    best = [sorted_eval[0][0],sorted_eval[0][1]];
-    return best;
+
+    //突然変異
+    const mutantrate = 0.01;
+    for(var n=0;n<N;n++){
+      if(Math.random()<mutantrate){
+        var m = Math.floor(Math.random()*numberOfFrames);
+        var r3 = Math.floor(Math.random()*2); //--- 0 or 1
+        individual[n][m] = (individual[n][m]-r3)%3 - 1; //--- -1-> 0 or 1, 0-> -1 or 1, 1-> -1 or 0
+      };
+    };
+    saveTmp(sortedEval);
+
+  }
+
+
+  //誤差関数evaluation(個体[個体番号]) = ゲームスコア
+  function evaluation(In){
+    score = 0;
+    numberOfBreakedBlock = 0;
+    reset();
+    calculate(In);//個体がゲームをする
+    return score//ブロック崩しのスコアを与える
+  };
+
+  // helper関数
+
+  function selfSort(array){
+    var len = array.length;
+    var sortArray = new Array(len);
+    for(var i=0;i<len;i++){
+      sortArray[i] = [array[i],i];
+    }
+    return sortArray.sort(function(a,b){return(b[0]-a[0]);});			
+  }
+
+  function sortEvaluation(evaluatedArray){
+    len = evaluatedArray.length;
+    //--- 最大値の取得
+    var eval = new Array(len);
+    //---　各個体の評価値を取得
+    for(var i=0;i<len;i++){
+      eval[i] = evaluation(evaluatedArray[i]);
+    }
+    var sortedEval = selfSort(eval);
+    return sortedEval;
+  }
+
+  function saveTmp(sortedEval){
+    total =0;
+    for(var n=0;n<N;n++){
+      total += sortedEval[n][0];
+    }
+    var average = total/N;
+    tmpArray = [count_ge,sortedEval[0][0],sortedEval[sortedEval.length-1][0],average];
+    console.log(tmpArray);
+    record.push(tmpArray);
   }
 
   document.getElementById("frameRateDecide").addEventListener("click", function(){
