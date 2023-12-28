@@ -20,7 +20,7 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
 #graph2{ cursor: pointer;}
 #data{ position: relative; top: 410px;}
 .setting{ position: relative; left: 20px;}
-#times{ width: 100px; font-size: inherit;}
+#generation{ width: 100px; font-size: inherit;}
 .button{ font-size: inherit;}
 
 </style>
@@ -33,16 +33,19 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
     <!-- <input type='checkbox' id='resetEverytime' checked>落ちたらリセット<br> -->
     <span>世代</span></br>
     <div class="setting">
-    <input type="text" id="times" value="5">世代</br>
+    <input type="text" id="generation" value="5">世代</br>
     <input type='button' class='button' id='quickTry' value='描画せずに実行'>
-    <input type="button" class='button' id="try" value="描画して実行"></br>
+    <input type="button" class='button' id="try" value="描画して実行">
+    <input type="button" class='button' id="reset" value="リセット"></br>
     </div>
     <span>速度(FrameRate)</span></br>
     <div class="setting">
     <input type="text" id="frameRate" value="10">
     <input type='button' class='button' id='frameRateDecide' value='決定'></br>
     <input type='button' class='button' id='slow' value='<<遅く'>
-    <input type="button" class='button' id="fast" value="速く>>">
+    <input type="button" class='button' id="fast" value="速く>>"></br>
+    <input type="button" class='button' id="save" value="保存"></br>
+    
     </div>
   </div>
 
@@ -50,11 +53,11 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
 const N = 100;//個体数
 var individual = new Array(N);
 const chrom = 1000;//遺伝子数
-var GENERATION;
+var GENERATION = 100;
 const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"
 const CROSSOVER_TYPE = "single" //--- "single","double"
 var FRAME_RATE = 1;
-const NUM_OF_CHILD = 8; // 2の累乗
+const NUM_OF_CHILD =32; // 2の累乗
 var best =new Array(2);
 var isFinish = false;
 var record = [];
@@ -73,6 +76,7 @@ var record = [];
 
   function d(ID){ return document.getElementById(ID);}
   d("frameRate").value = FRAME_RATE;
+  d("generation").value = GENERATION;
   var timer;
   var paused = false, gameOver = false, gameEnded = true;
   // var numberOfBalls = 0; //使用したボールの数
@@ -244,7 +248,7 @@ var record = [];
     g2.fillStyle = '#fff';
     g2.fillText('ブロック数:　'+numberOfBreakedBlock ,15,25);
     g2.fillText('世代数:　'+count_ge,190,25);
-    g2.fillText('個体番号:　'+(parseInt(count_n)+1),310,25);
+    g2.fillText('個体番号:　'+(parseInt(count_n)+1),330,25);
     g2.fillText('Score:　'+score,480,25);
     g2.save();
     g2.setTransform(1,0,0,-1,0,h);
@@ -366,42 +370,28 @@ var record = [];
 
 
 
-  var count_n = 0;
-  var count_ge = 1;
-  var numberOfBreakedBlock = 0;
-  var score_array = new Array(N);
-  for(var i=0;i<N;i++){
-    score_array[i] = 0;
-  }
-
+  var count_n;
+  var count_ge;
+  var numberOfBreakedBlock;
+  var score_array;
+  
   // 実行された時の処理
   document.getElementById("try").addEventListener("click", function(){
-    GENERATION = parseInt(document.getElementById("times").value); //--- 世代数
-    getTime();
     gameEnded = false;
-    count_n = 0;
-    count_ge = 1;
-    numberOfBreakedBlock  = 0;
-    score = 0;
-    score_array = new Array(N);
-    for(var i=0;i<N;i++){
-      score_array[i] = 0;
-    }
+    init();
     reset();
     drawBG();
     mainLoop();
   })
 
   document.getElementById("quickTry").addEventListener("click", function(){
-    GENERATION = parseInt(document.getElementById("times").value); //--- 世代数
-    getTime();
-    count_n = 0;
-    count_ge = 1;
+    init();
     isFinish = true;
 
     //操作をGENERATION回繰り返す
     
     for(var ge=0;ge<GENERATION;ge++){
+      // console.log("GENETATION["+ge+"]");
       if (ge == GENERATION-1){
         var sortedEval = sortEvaluation(individual);
         // // //--- 最大値の取得
@@ -414,7 +404,7 @@ var record = [];
             console.log("break");
             count_n = best[1];
             count_ge = GENERATION;
-            saveCSV(record);
+            // saveCSV(record);
             break;
           }else{
             console.log("not break");
@@ -426,13 +416,12 @@ var record = [];
           // isFinish = true;
           count_n = best[1];
           count_ge = GENERATION;
-          saveCSV(record);
+          // saveCSV(record);
           break;
         }
       };
       evolve();
       count_ge++;
-
     };
   },false);
 
@@ -481,16 +470,20 @@ var record = [];
       };
       
       //--- 選択
+      // console.log("choice");
       if(CHOICE_TYPE == "elite" ){elite(parent,individual,sortedEval);}
       else if(CHOICE_TYPE == "rulet"){rulet(parent,eval,individual);}
       //--- 交叉
+      // console.log("crossover");
       if(CROSSOVER_TYPE == "single"){single_crossover(child,parent)}
       else if(CROSSOVER_TYPE == "double"){double_crossover(child,parent)}
+      // console.log("selection");
       selection(child,individual,sortedEval);
     }
 
     //突然変異
-    const mutantrate = 0.01;
+    // console.log("mutation");
+    const mutantrate = 0.1;
     for(var n=0;n<N;n++){
       if(Math.random()<mutantrate){
         var m = Math.floor(Math.random()*numberOfFrames);
@@ -545,6 +538,28 @@ var record = [];
     console.log(tmpArray);
     record.push(tmpArray);
   }
+  function init(){
+    GENERATION = parseInt(document.getElementById("generation").value); //--- 世代数
+    getTime();
+    count_n = 0;
+    count_ge = 1;
+    numberOfBreakedBlock = 0;
+    score_array = new Array(N);
+    for(var i=0;i<N;i++){
+      score_array[i] = 0;
+    }
+  }
+
+  function initWithChrom(){
+    //初期の遺伝子決定(ランダム)
+    for(var n=0;n<N;n++){
+      individual[n] = new Array(chrom);
+      for(var c=0;c<chrom;c++){
+          individual[n][c] = Math.floor(Math.random()*3) - 1;
+      };
+    };
+    init();
+  }
 
   document.getElementById("frameRateDecide").addEventListener("click", function(){
     FRAME_RATE = d("frameRate").value;
@@ -556,6 +571,14 @@ var record = [];
   document.getElementById("fast").addEventListener("click", function(){
     FRAME_RATE=Math.ceil(FRAME_RATE/2);
     d("frameRate").value = FRAME_RATE;
+  });
+  document.getElementById("save").addEventListener("click", function(){
+    saveCSV(record);
+  });
+  document.getElementById("reset").addEventListener("click", function(){
+    console.clear();
+    console.log("RESET");
+    initWithChrom();
   });
 })();
 </script>
