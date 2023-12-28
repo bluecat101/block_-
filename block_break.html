@@ -51,7 +51,7 @@ var individual = new Array(N);
 const chrom = 1000;//遺伝子数
 var GENERATION;
 const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"
-const CROSSING_TYPE = "double" //--- "single","double"
+const CROSSOVER_TYPE = "double" //--- "single","double"
 var FRAME_RATE = 1;
 const NUM_OF_CHILD = 8; // 2の累乗
 var best =new Array(2);
@@ -476,8 +476,8 @@ var is_finish = false;
         else if(CHOICE_TYPE == "rulet"){rulet(parent,eval,individual);}
 
         //--- 交叉
-        if(CROSSING_TYPE == "single"){single_crossover(child,parent)}
-        else if(CROSSING_TYPE == "double"){double_crossover(child,parent)}
+        if(CROSSOVER_TYPE == "single"){single_crossover(child,parent)}
+        else if(CROSSOVER_TYPE == "double"){double_crossover(child,parent)}
         selection(child,individual,sorted_eval);
       }
 
