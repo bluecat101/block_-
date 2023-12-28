@@ -1,0 +1,522 @@
+<!-- 遺伝子長の数だけ使い切らない可能性があるので、使った遺伝子長の後ろ側を子の生成時に乱数で指定するのあり。 -->
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ブロック崩し -遺伝的アルゴリズム-</title>
+<meta http-equiv="Content-Style-Type" content="text/css">
+<meta http-equiv="Content-Script-Type" content="text/javascript">
+<meta name="robots" content="noindex,nofollow">
+<script src="choice.js"></script>
+<script src="selection.js"></script>
+<script src="crossover.js"></script>
+<script src="MGG.js"></script>
+<style type="text/css">
+
+body{ -moz-user-select: none; -webkit-user-select: none; -ms-user-select: none; font-size: 20px;}
+canvas{ border: none; position: absolute; left: 10px; top: 10px;}
+#graph2{ cursor: pointer;}
+#data{ position: relative; top: 410px;}
+.setting{ position: relative; left: 20px;}
+#times{ width: 100px; font-size: inherit;}
+.button{ font-size: inherit;}
+
+</style>
+</head>
+<body>
+
+<canvas id='graph'></canvas>  <!-- 初期画面用、バーとボール用-->
+<canvas id='graph2'></canvas> <!-- ブロック-->
+<div id='data'>
+    <!-- <input type='checkbox' id='resetEverytime' checked>落ちたらリセット<br> -->
+    <span>世代</span></br>
+    <div class="setting">
+    <input type="text" id="times" value="10">世代</br>
+    <input type='button' class='button' id='quickTry' value='描画せずに実行'>
+    <input type="button" class='button' id="try" value="描画して実行"></br>
+    </div>
+    <span>速度(FrameRate)</span></br>
+    <div class="setting">
+    <input type="text" id="frameRate" value="10">
+    <input type='button' class='button' id='frameRateDecide' value='決定'></br>
+    <input type='button' class='button' id='slow' value='<<遅く'>
+    <input type="button" class='button' id="fast" value="速く>>">
+    </div>
+  </div>
+
+<script>
+const N = 500;//個体数
+var individual = new Array(N);
+const chrom = 1000;//遺伝子数
+var GENERATION;
+const CHOICE_TYPE = "MGG-rulet" //--- "elite","MGG-rulet"
+const CROSSING_TYPE = "one" //--- "one","two"
+var FRAME_RATE = 1;
+const NUMBER_OF_CROSSOVER = 32; // 2の累乗
+var best =new Array(2);
+var is_view;
+var is_finish = false;
+
+(function(){
+  
+  //バーを動かす関数
+  function moveBar(In){
+      var action = In[numberOfFrames];
+      if(action==0) reward += 10;
+      var tempX = bar.x+action*30; //左右に30ピクセルまたは動かない
+      if (tempX<p.r) tempX = p.r; //左の壁に当たったら、それ以上左へは行かない
+      else if (tempX>w-p.r) tempX = w-p.r; //右の壁に当たったらそれ以上右へは行かない
+      bar.x = tempX;
+  };
+
+  function d(ID){ return document.getElementById(ID);}
+  d("frameRate").value = FRAME_RATE;
+  var timer;
+  var paused = false, gameOver = false, gameEnded = true;
+  // var numberOfBalls = 0; //使用したボールの数
+  var numberOfFrames = 0; //かかったフレーム数（÷33＝時間（秒））
+  var graph = d('graph'), graph2 = d('graph2');
+  var g = graph.getContext('2d'), g2 = graph2.getContext('2d');
+  var w = 600, h = 400;
+  graph.width = graph2.width = w; graph.height = graph2.height = h;
+  g.fillStyle = '#000';
+  g.fillRect(0,0,w,h);
+  g.save();
+  g.font = '30px Arial';
+  g.fillStyle = 'white';
+  g.fillText('Click to Start',210,220);
+  g.restore();
+
+  // pはボール。順にx座標、y座標、半径、速度x成分、速度y成分,色
+  var p = {x: 300, y: 20, r: 10, vx: 0, vy: 0, color: '#fff'};
+
+  //barは棒。x座標、yは厚み、Lは長さの半分、edgeは角度が付き始める点の端からの距離
+  var bar = {x: 300, y: 10, L: 50, edge: 45, color: '#ff0'};
+
+  //bはブロック。b.xとb.yがともに配列で、xy座標を示す。wはwidthで幅、hはheightで高さ。全て同じ大きさの長方形
+  var b = {x: [], y: [], w: 20, h: 10, color: '#88f'};
+
+  var score = 0;
+
+  d('graph2').addEventListener('click',function(){
+    if (gameEnded){
+      gameEnded = false;
+      reset();
+      drawBG();
+      mainLoop();
+    }
+    else if (paused){
+      paused = false;
+      drawBG();
+      mainLoop();
+    }
+    else{
+      paused = true;
+      clearTimeout(timer);
+      g2.font = '30px Arial';
+      g2.fillStyle = 'white';
+      g2.fillText('paused',250,220);
+    }
+  },false);
+
+  function reset(){
+    bar.x = 300;
+    p.x = bar.x; p.y = bar.y+p.r;
+    var angle = Math.PI*(10)/180;//Math.PI*(Math.random()*60-30)/180; //-30～30
+    p.vx = Math.sin(angle)*12; p.vy = Math.cos(angle)*12; //cosとsinの反転に注意
+    b.x = []; b.y = [];
+    for (var i=0; i<3; i++) for (var j=0; j<11; j++){
+        b.x.push(w/2-10*b.w+j*b.w*2);
+        b.y.push(340-i*b.h*2);
+    }
+    if(!is_finish){
+      record();
+    }
+    score = numberOfFrames = 0;
+    // score = numberOfBalls = numberOfFrames = 0;
+  }
+
+  function mainLoop(){
+    g.fillStyle = '#000';
+    g.fillRect(0,0,w,h);
+    g.setTransform(1,0,0,-1,0,h);
+
+    //ボールの描画
+    g.beginPath();
+    g.arc(p.x,p.y,p.r,0,2*Math.PI);
+    g.fillStyle = p.color;
+    g.fill();
+    //ボールの描画
+
+    //バーの描画
+    g.fillStyle = bar.color;
+    g.fillRect(bar.x-bar.L+p.r+3,0,(bar.L-p.r-3)*2,bar.y); //±3は"遊び"
+
+    //ボールを現在の速度をもとに移動させる
+    p.x += p.vx;
+    p.y += p.vy;
+
+    //バーを動かす
+    if(!is_view || count_ge > GENERATION){
+      moveBar(individual[best[1]]);
+    }else{
+      moveBar(individual[count_n]);
+    }
+
+
+    //ここから衝突判定。まずはブロック
+    if (p.y>=280){
+      for (var i=0,I=b.x.length,hit=false; i<I; i++){
+        if ((p.y-b.y[i])*p.vy<0 && Math.abs(p.x-b.x[i])<=b.w && Math.abs(p.y-b.y[i])<=b.h+p.r){
+            // x座標においてボールがぶつかったかどうか
+            p.vy *= -1;
+            hit = true;
+            break;
+        }
+        else if ((p.x-b.x[i])*p.vx<0 &&Math.abs(p.y-b.y[i])<=b.h && Math.abs(p.x-b.x[i])<=b.w+p.r){
+            // y座標においてボールがぶつかったかどうか
+            p.vx *= -1;
+            hit = true;
+            break;
+        }
+      }
+      if (hit){
+        score += 10;
+        b.x.splice(i,1); b.y.splice(i,1);
+        drawBG(); // ブロックを再描画
+        if (b.x.length<=0){
+            // 全てのブロックが消えたかどうか
+            gameEnded = true;
+            d('graph2').style.cursor = 'pointer';
+            g2.font = '40px Arial';
+            g2.fillStyle = 'white';
+            g2.fillText('SUCCESS !',200,200);
+            var timeLapse = Math.floor(100*numberOfFrames/33)/100;
+            g2.fillText(timeLapse+' sec',220,250);
+            return;
+        }
+      }
+    }
+    //↓衝突判定。ここから壁
+    if (p.x>w-p.r){ p.x = w-p.r; p.vx *= -1;} //right
+    if (p.x<p.r){   p.x = p.r; p.vx *= -1;} //left
+    if (p.y>h-p.r){ p.y = h-p.r; p.vy *= -1;} //up
+    if (p.y<p.r+bar.y){
+      var p_bar = Math.abs(p.x-bar.x);
+      if (!gameOver && p_bar<=bar.L){
+        var X = (p.x>bar.x) ? 1 : -1; //衝突点のバーの法線ベクトル(X,1);
+        if (p_bar<=bar.L-bar.edge) X = 0; //バーの中央
+        else if (p_bar<=bar.L-bar.edge/3) X *= (p_bar-bar.L+bar.edge)/100; //0～0.3（バーの端は約73°）
+        else X *= 0.3;
+        var L = Math.sqrt(X*X+1); //法線ベクトルの長さ
+        var vec = {x: X/L, y: 1/L}; //法線ベクトルの正規化
+        var dot = vec.x*p.vx+vec.y*p.vy;
+        p.y = p.r+bar.y;
+        p.vx -= 2*dot*vec.x;
+        p.vy -= 2*dot*vec.y;
+        if (Math.abs(p.vx)/p.vy>1.5){ //角度が付き過ぎないよう調整
+          var v2 = p.vx*p.vx+p.vy*p.vy;
+          p.vy = Math.sqrt(v2/3.25);
+          p.vx = (p.vx<0) ? -p.vy*1.5 : p.vy*1.5;
+        }
+      }
+      else if (!gameOver && p.y<p.r) gameOver = true;
+      else if (gameOver && p.y<-p.r){
+        gameOver = false;
+        reset();
+        numberOfFrames = -1;;
+        drawBG();
+      }
+    }
+    numberOfFrames++;
+    timer = setTimeout(mainLoop,FRAME_RATE); //30ミリ秒後にmainloop実行 (-> 1秒に約30回繰り返す)
+  }
+
+  //↓ブロックの描画。動きがないのに毎回描くのは無駄なので、別にして処理を節約。
+  function drawBG(){
+    g2.clearRect(0,0,w,h);
+    g2.font = '20px Arial';
+    g2.fillStyle = '#fff';
+    // g2.fillText('Balls:　'+numberOfBalls,15,25);
+    g2.fillText('世代数:　'+count_ge,120,25);
+    g2.fillText('個体番号:　'+(parseInt(count_n)+1),290,25);
+    g2.fillText('Score:　'+score,480,25);
+    g2.save();
+    g2.setTransform(1,0,0,-1,0,h);
+    g2.fillStyle = '#ccf';
+    for (var i=0,I=b.x.length; i<I; i++) g2.fillRect(b.x[i]-b.w,b.y[i]-b.h,2*b.w,2*b.h);
+    g2.fillStyle = b.color;
+    for (var i=0; i<I; i++) g2.fillRect(b.x[i]-b.w+1,b.y[i]-b.h+1,2*b.w-2,2*b.h-2);
+    g2.restore();
+  };
+
+  console.log("start");
+  var reward;
+
+
+  //↓ここから計算用
+  function calculate(In){ //--- 全ての個体に対して実行される
+  //--- 全ての遺伝子に対して実行
+    while (numberOfFrames<10000){ 
+      p.x += p.vx;
+      p.y += p.vy;
+      moveBar(In);
+      if (p.y>=280){
+        for (var i=0,I=b.x.length,hit=false; i<I; i++){
+          if ((p.y-b.y[i])*p.vy<0 && Math.abs(p.x-b.x[i])<=b.w && Math.abs(p.y-b.y[i])<=b.h+p.r){
+            p.vy *= -1; hit = true; break;}
+          else if ((p.x-b.x[i])*p.vx<0 && Math.abs(p.y-b.y[i])<=b.h && Math.abs(p.x-b.x[i])<=b.w+p.r){
+            p.vx *= -1; hit = true; break;}
+        }
+        if (hit){
+          score += 10;
+          reward += 10;
+          b.x.splice(i,1); b.y.splice(i,1);
+          if (b.x.length==0) break;
+        }
+      }
+      if (p.x>w-p.r){ p.x = w-p.r; p.vx *= -1;} //right
+      if (p.x<p.r){   p.x = p.r; p.vx *= -1;} //left
+      if (p.y>h-p.r){ p.y = h-p.r; p.vy *= -1;} //up
+      if (p.y<p.r+bar.y){
+        //--- barにあたっている
+        var p_bar = Math.abs(p.x-bar.x);
+        if (p_bar<=bar.L){
+          var X = (p.x>bar.x) ? 1 : -1; //衝突点のバーの法線ベクトル(X,1);
+          if (p_bar<=bar.L-bar.edge) X = 0; //バーの中央
+          else if (p_bar<=bar.L-bar.edge/3) X *= (p_bar-bar.L+bar.edge)/100; //0～0.3（バーの端は約73°）
+          else X *= 0.3;
+          var distance = Math.abs(p.x-bar.x);
+          // console.log(distance);
+          // if(distance <= bar.L){
+          //   reward += 5;
+          // }else{
+          //   // console.log("no't");
+          //   reward += 5/distance;
+          // }
+          // reward += 
+          var L = Math.sqrt(X*X+1); //法線ベクトルの長さ
+          var vec = {x: X/L, y: 1/L}; //法線ベクトルの正規化
+          var dot = vec.x*p.vx+vec.y*p.vy;
+          p.y = p.r+bar.y;
+          p.vx -= 2*dot*vec.x;
+          p.vy -= 2*dot*vec.y;
+          if (Math.abs(p.vx)/p.vy>1.5){ //角度が付き過ぎないよう調整
+            var v2 = p.vx*p.vx+p.vy*p.vy;
+            p.vy = Math.sqrt(v2/3.25);
+            p.vx = (p.vx<0) ? -p.vy*1.5 : p.vy*1.5;
+          }
+        }else if (p.y<p.r){ // ゲームオーバー
+          break;
+        };
+      };
+      numberOfFrames++;
+    };
+  };
+
+    //遺伝的アルゴリズム
+
+    //初期設定
+
+    //各時間ごとの行動を遺伝子とする個体を作る
+
+
+
+  //初期の遺伝子決定(ランダム)
+  for(var n=0;n<N;n++){
+      individual[n] = new Array(chrom);
+      for(var c=0;c<chrom;c++){
+          individual[n][c] = Math.floor(Math.random()*3) - 1;
+      };
+  };
+
+  function record(){
+    score_array[count_n] = score;
+    count_n++;
+    if(count_n == N){
+      count_ge++;
+      evolve();
+      //--- 初期化
+      count_n = 0;
+      for(var i=0;i<N;i++){
+        score_array[i] = 0;
+      }
+    }
+    if(count_ge > GENERATION){
+      is_finish = true;
+      tmp_best = getBestIn(individual);
+      best = [tmp_best[0],tmp_best[1]];
+      count_ge = GENERATION;
+      // console.log(best);
+      count_n = best[1];
+      // console.log(count_n);
+      // clearTimeout(timer);
+    }
+  }
+
+  var count_n = 0;
+  var count_ge = 1;
+  var score = 0;
+  var score_array = new Array(N);
+  for(var i=0;i<N;i++){
+    score_array[i] = 0;
+  }
+  document.getElementById("try").addEventListener("click", function(){
+    GENERATION = document.getElementById("times").value; //--- 世代数
+    is_view = true;
+    gameEnded = false;
+    reset();
+    drawBG();
+    mainLoop();
+    count_n = 0;
+    count_ge = 1;
+    score = 0;
+    score_array = new Array(N);
+    for(var i=0;i<N;i++){
+      score_array[i] = 0;
+    }
+  })
+
+  document.getElementById("quickTry").addEventListener("click", function(){
+    GENERATION = document.getElementById("times").value; //--- 世代数
+    count_n = N;
+    count_ge = GENERATION;
+    is_view = false;
+
+    //操作をGENERATION回繰り返す
+    
+    for(var ge=0;ge<GENERATION;ge++){
+      if (ge == GENERATION-1){
+        // //--- 最大値の取得
+        tmp_best = getBestIn(individual);
+        best = [tmp_best[0],tmp_best[1]];
+        console.log("best : ", best[0], best[1]); //--- 評価値と何番目の個体か
+        if(CHOICE_TYPE == "MGG-rulet"){    
+          if(best[0]>1500){ //--- 目標値に達成しているかどうか
+            console.log("break");
+            is_finish = true;
+            count_n = best[1];
+            break;
+          }else{
+            console.log("not break");
+            ge = 0;
+          };
+        }
+      };
+      evolve();
+    };
+  },false);
+
+  //誤差関数evaluation(個体[個体番号]) = ゲームスコア
+  function evaluation(In){
+    reward = 0;
+    reset();
+    calculate(In);//個体がゲームをする
+    return reward//ブロック崩しのスコアを与える
+  };
+
+  function selfSort(array){
+    var len = array.length;
+    var sort_array = new Array(len);
+    for(var i=0;i<len;i++){
+      sort_array[i] = [array[i],i];
+    }
+    return sort_array.sort(function(a,b){return(b[0]-a[0]);});			
+  }
+
+
+  function evolve(){
+    var parent = new Array(2);
+    if(CHOICE_TYPE != "MGG-rulet"){    
+      for(var i=0;i<2;i++){
+        parent[i] = new Array(chrom);
+      };
+    }
+    //選択と交叉
+    if(CHOICE_TYPE == "MGG-rulet"){
+        const crossrate = 0.8;
+        if(crossrate>Math.random()){
+          //親選択
+          var r1 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
+          var r2 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
+          const CHILDLEN = 10;//2+2^3
+          var child = MGG_crossover(CHILDLEN,r1,r2,individual);
+          var child_eval = new Array(CHILDLEN);
+          for(var n=0;n<CHILDLEN;n++){
+            child_eval[n] = evaluation(child[n]);
+          };
+          var select = MGG_choice(CHILDLEN,child_eval);
+          //最も評価の高い個体の番号を取得
+          var sorted_eval=selfSort(child_eval);
+          var top = [sorted_eval[0][0],sorted_eval[0][1]];
+          MGG_selection(top,select,r1,r2,child,individual);
+        };
+      }
+            
+      //--- 選択-交叉
+      if(CHOICE_TYPE == "elite" || CHOICE_TYPE == "rulet"){
+        //---　評価
+        //--- 最大値の取得
+        var eval = new Array(N);
+        //---　各個体の評価値を取得
+        for(var n=0;n<N;n++){
+          eval[n] = evaluation(individual[n]);
+        }
+        var sorted_eval = selfSort(eval)
+        const CHILDLEN = 2;
+        var child = new Array(CHILDLEN);
+        for(var n=0;n<CHILDLEN;n++){
+            child[n] = new Array(chrom);
+        };
+        
+        //--- 選択
+        if(CHOICE_TYPE == "elite" ){elite(parent,individual,sorted_eval);}
+        else if(CHOICE_TYPE == "rulet"){rulet(parent,eval,individual);}
+
+        //--- 交叉
+        if(CROSSING_TYPE == "one"){single_crossover(child,parent)}
+        else if(CROSSING_TYPE == "tow"){double_crossover(child,parent)}
+        selection(child,individual,sorted_eval);
+      }
+
+      //突然変異
+      const mutantrate = 0.01;
+      for(var n=0;n<N;n++){
+        if(Math.random()<mutantrate){
+          var m = Math.floor(Math.random()*numberOfFrames);
+          var r3 = Math.floor(Math.random()*2); //--- 0 or 1
+          individual[n][m] = (individual[n][m]-r3)%3 - 1; //--- -1-> 0 or 1, 0-> -1 or 1, 1-> -1 or 0
+        };
+      };
+  }
+  function getBestIn(individual){
+    //--- 最大値の取得
+    var eval = new Array(N);
+    //---　各個体の評価値を取得
+    for(var n=0;n<N;n++){
+      eval[n] = evaluation(individual[n]);
+    }
+    var sorted_eval = selfSort(eval);
+    // console.log(eval);
+    // console.log(sorted_eval);
+    best = [sorted_eval[0][0],sorted_eval[0][1]];
+    return best;
+  }
+
+  document.getElementById("frameRateDecide").addEventListener("click", function(){
+    FRAME_RATE = d("frameRate").value;
+  });
+  document.getElementById("slow").addEventListener("click", function(){
+    FRAME_RATE *= 2;
+    d("frameRate").value = FRAME_RATE;
+  });
+  document.getElementById("fast").addEventListener("click", function(){
+    FRAME_RATE=Math.ceil(FRAME_RATE/2);
+    d("frameRate").value = FRAME_RATE;
+  });
+})();
+</script>
+</body>
+</html>
+
