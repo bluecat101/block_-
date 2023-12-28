@@ -45,5 +45,7 @@ function single_crossover(child,parent){
         }
       }
     }
+    child.shift();
+    child.pop();
     // child;
   }
