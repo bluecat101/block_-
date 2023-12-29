@@ -52,12 +52,12 @@ function MGG_choice(CHILDLEN,child_eval){
  //ルーレット選択で決定した個体番号の取得
   var total = 0;
   for(var n=0;n<CHILDLEN;n++){
-    total += child_eval[n];
+    total += child_eval[n][0];
   };
   var arrow = Math.floor(Math.random()*total);
   var select = 0;
   for(var n=0,sum=0.0;n<CHILDLEN;n++){
-    sum += child_eval[n];
+    sum += child_eval[n][0];
     if(sum>arrow){
       select = n;
       break;
