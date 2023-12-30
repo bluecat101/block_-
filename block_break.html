@@ -60,11 +60,11 @@ var N = 100;//個体数
 var individual = new Array(N);
 var chrom = 1000;//遺伝子数
 var GENERATION = 100;
-const CHOICE_TYPE = "MGG-rulet" //--- "elite","MGG-rulet"
+const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"
 const CROSSOVER_TYPE = "single" //--- "single","double"
 var FRAME_RATE = 1;
 const NUM_OF_CHILD =32; // 2の累乗
-var best =new Array(2);
+var best = new Array(2);
 var isFinish = false;
 var record = [];
 var count_n;
@@ -72,7 +72,9 @@ var count_ge;
 var score = 0;
 var numberOfBreakedBlock;
 var recordIndevidual;
-
+// recordIndevidual[0].push("1");
+// recordIndevidual[0].push("2");
+// recordIndevidual[0].push("3");
 
 // (function(){
   
@@ -285,6 +287,7 @@ var recordIndevidual;
       return;
     }
     tmp = [score,numberOfFrames];
+    // console.log("tuuka");
     recordIndevidual[count_n] = tmp;
     count_n++;
     if(count_n == N){
@@ -316,6 +319,7 @@ var recordIndevidual;
     isFinish = true;
 
     //操作をGENERATION回繰り返す
+    console.log(recordIndevidual[0][0]);
     loopForEvolve();
     reset();
     drawBG();
@@ -340,6 +344,14 @@ var recordIndevidual;
     saveCSV(record);
   });
   document.getElementById("reset").addEventListener("click", function(){
+    clearTimeout(timer);
+    var paused = false, gameOver = false, gameEnded = true
+    g.fillStyle = '#000';
+    g.fillRect(0,0,w,h);
+    g2.clearRect(0,0,w,h);
+    g.font = '30px Arial';
+    g.fillStyle = 'white';
+    g.fillText('Click to Start',210,220);
     console.clear();
     console.log("RESET");
     initWithChrom();

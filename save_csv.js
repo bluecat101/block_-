@@ -4,8 +4,8 @@ function saveCSV(record){
   var row = record.length;
   if(row == 0){return;}
   var column = record[0].length;
-  if(column != 4){return;}
-  var heading =["max","min","average"];
+  if(column != 5){return;}
+  var heading =["max","min","average","maxChrom"];
   fullText = "RECORD";
   for(var i =0;i<heading.length;i++){
     if(i!=heading.length-1){

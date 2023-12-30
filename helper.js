@@ -20,7 +20,13 @@
     count_n = 0;
     count_ge = 1;
     numberOfBreakedBlock = 0;
-    recordIndevidual = new Array(N);
+    recordIndevidual = new Array(GENERATION);
+    for(var i=0;i<GENERATION;i++){
+      recordIndevidual[i] = new Array(N);
+      // console.log(recordIndevidual[0]);
+    }
+    // recordIndevidual[0][0] = "test";
+    // console.log(recordIndevidual[0][0]);
 
   }
 

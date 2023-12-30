@@ -51,7 +51,12 @@ function simulate(In){ //--- 全ての個体に対して実行される
     numberOfFrames++;
   };
   tmp = [score,numberOfFrames];
-  recordIndevidual[count_n] = tmp;
+  // console.log(count_ge-1,count_n-1);
+  // console.log(recordIndevidual[0]);
+  // console.log(recordIndevidual[0][0]);
+
+  recordIndevidual[count_ge-1][count_n-1] =tmp;
+  // recordIndevidual[count_n] = tmp;
 };
 
 
@@ -63,14 +68,14 @@ function loopForEvolve(){
       var sortedEval = sortEvaluation(individual);
       // // //--- 最大値の取得
       // tmp_best = getBestIn(individual);
-      saveTmp(sortedEval);
+      saveTmp(sortedEval,recordIndevidual[count_ge-1]);
       best = [sortedEval[0][0],sortedEval[0][1]];
       console.log("best : ", best[0], best[1]); //--- 評価値と何番目の個体か
       if(CHOICE_TYPE == "MGG-rulet"){    
         if(best[0]>100){ //--- 目標値に達成しているかどうか
           console.log("break");
           console.log(record.slice(-1));
-          console.log(recordIndevidual);
+          console.log(record);
           count_n = best[1];
           count_ge = GENERATION;
           // saveCSV(record);
@@ -83,7 +88,7 @@ function loopForEvolve(){
         };
       }else{
         console.log(record.slice(-1));
-        console.log(recordIndevidual);
+        console.log(record);
         console.log("finish_calculate");
         // isFinish = true;
         count_n = best[1];
@@ -151,7 +156,11 @@ function evolve(){
       individual[n][m] = (individual[n][m]-r3)%3 - 1; //--- -1-> 0 or 1, 0-> -1 or 1, 1-> -1 or 0
     };
   };
-  saveTmp(sortedEval);
+  // console.log(recordIndevidual[count_ge-1]);
+  saveTmp(sortedEval,recordIndevidual[count_ge-1]);
+  // topScoreStatus = selfSort(recordIndevidual[count_n]);
+  // tmp = [topScoreStatus[0][0],numberOfFrames];
+  // recordIndevidual.push(tmp);
 }
 
 //誤差関数evaluation(個体[個体番号]) = ゲームスコア
@@ -176,13 +185,15 @@ function sortEvaluation(evaluatedArray){
   return sortedEval;
 }
 
-function saveTmp(sortedEval){
+function saveTmp(sortedEval,recordIndevidual){
+  maxIndevidualFrame = recordIndevidual[sortedEval[0][1]][1];
   total =0;
   for(var n=0;n<N;n++){
     total += sortedEval[n][0];
   }
   var average = total/N;
-  tmpArray = [count_ge,sortedEval[0][0],sortedEval[sortedEval.length-1][0],average];
+  //　世代,最大値,最小値,平均値,最大値の使用した遺伝子長
+  tmpArray = [count_ge,sortedEval[0][0],sortedEval[sortedEval.length-1][0],average,maxIndevidualFrame];
   record.push(tmpArray);
 }
 
