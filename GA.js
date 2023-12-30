@@ -68,7 +68,7 @@ function loopForEvolve(){
       var sortedEval = sortEvaluation(individual);
       // // //--- 最大値の取得
       // tmp_best = getBestIn(individual);
-      saveTmp(sortedEval,recordIndevidual[count_ge-1]);
+      saveByGeneration(sortedEval,recordIndevidual[count_ge-1]);
       best = [sortedEval[0][0],sortedEval[0][1]];
       console.log("best : ", best[0], best[1]); //--- 評価値と何番目の個体か
       if(CHOICE_TYPE == "MGG-rulet"){    
@@ -157,7 +157,7 @@ function evolve(){
     };
   };
   // console.log(recordIndevidual[count_ge-1]);
-  saveTmp(sortedEval,recordIndevidual[count_ge-1]);
+  saveByGeneration(sortedEval,recordIndevidual[count_ge-1]);
   // topScoreStatus = selfSort(recordIndevidual[count_n]);
   // tmp = [topScoreStatus[0][0],numberOfFrames];
   // recordIndevidual.push(tmp);
@@ -183,17 +183,5 @@ function sortEvaluation(evaluatedArray){
   }
   var sortedEval = selfSort(eval);
   return sortedEval;
-}
-
-function saveTmp(sortedEval,recordIndevidual){
-  maxIndevidualFrame = recordIndevidual[sortedEval[0][1]][1];
-  total =0;
-  for(var n=0;n<N;n++){
-    total += sortedEval[n][0];
-  }
-  var average = total/N;
-  //　世代,最大値,最小値,平均値,最大値の使用した遺伝子長
-  tmpArray = [count_ge,sortedEval[0][0],sortedEval[sortedEval.length-1][0],average,maxIndevidualFrame];
-  record.push(tmpArray);
 }
 
