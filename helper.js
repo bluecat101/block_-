@@ -17,6 +17,7 @@
     N = parseInt(d("individual").value); //--- 
     chrom = parseInt(d("chrom").value); //--- 
     getTime();
+    score = 0;
     count_n = 0;
     count_ge = 1;
     numberOfBreakedBlock = 0;

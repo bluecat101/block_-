@@ -23,7 +23,12 @@ function simulate(In){ //--- 全ての個体に対して実行される
         numberOfBreakedBlock +=1;
         // reward += 10;
         b.x.splice(i,1); b.y.splice(i,1);
-        if (b.x.length==0) break;
+        if (b.x.length==0) {
+          score+= 1000/(numberOfFrames/33);
+          // console.warn(numberOfFrames/33);
+          break;
+        }
+
       }
     }
     if (p.x>w-p.r){ p.x = w-p.r; p.vx *= -1;} //right
@@ -32,7 +37,7 @@ function simulate(In){ //--- 全ての個体に対して実行される
     if (p.y<p.r+bar.y){
       //--- barにあたっている
       var p_bar = Math.abs(p.x-bar.x);
-    score+=scoreByPosition(p_bar);
+      score+=scoreByPosition(p_bar);
 
       // if(p_bar<=bar.L){score += 1;}
       // else if(p_bar<bar.L+100){score += 0.5;}
@@ -258,7 +263,5 @@ function sortEvaluation(evaluatedArray,isChild = false){
 
 function scoreByPosition(p_bar){
   if(p_bar<=bar.L){return 1;}
-  else {return 0.5-(Math.floor((p_bar-bar.L)/30)+1)/10}
-  // else if(p_bar<240){score += 0.2;}
-
+  else {return (0.5-(Math.floor((p_bar-bar.L)/30)+1)/10)}
 }
