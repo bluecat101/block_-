@@ -37,7 +37,7 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
     <div class="setting">
       世代数 <input type="text" id="generation" class="status" value="">
       個体数 <input type="text" id="individual" class="status" value="">
-      遺伝子数  <input type="text" id="chrom" class="status" value="">
+      遺伝子長  <input type="text" id="chrom" class="status" value="">
     </div>
     <span>実行</span></br>
     <div class="setting">
@@ -58,37 +58,34 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
 <script>
 var N = 100;//個体数
 var individual = new Array(N);
-var chrom = 1000;//遺伝子数
-var GENERATION = 100;
-const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"
-const CROSSOVER_TYPE = "single" //--- "single","double"
+var chrom = 300;//遺伝子数
+var GENERATION = 500;
+const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"."rulet"
+const CROSSOVER_TYPE = "double" //--- "single","double"
 var FRAME_RATE = 1;
-const NUM_OF_CHILD =32; // 2の累乗
+const NUM_OF_CHILD =8; // 2の累乗
 var best = new Array(2);
 var isFinish = false;
-var record = [];
-var count_n;
+var record = []; //各世代の最高値等の記録
+var count_n; 
 var count_ge;
 var score = 0;
 var numberOfBreakedBlock;
-var recordIndevidual;
-// recordIndevidual[0].push("1");
-// recordIndevidual[0].push("2");
-// recordIndevidual[0].push("3");
+var recordIndividual; // 各個体についてのデータについての記録
+var numberOfFrames = 0; //かかったフレーム数（÷33＝時間（秒））
+var positionOfChrom = 0;
+if(CHOICE_TYPE == "MGG-rulet"){var total_count_ge=1;}
 
 // (function(){
   
   //バーを動かす関数
   function moveBar(In){
-    if(numberOfFrames%10 != 0){
-      return;
-    }
-      var action = In[numberOfFrames/10];
-      // if(action==0) reward += 10;
-      var tempX = bar.x+action*30; //左右に30ピクセルまたは動かない
-      if (tempX<p.r) tempX = p.r; //左の壁に当たったら、それ以上左へは行かない
-      else if (tempX>w-p.r) tempX = w-p.r; //右の壁に当たったらそれ以上右へは行かない
-      bar.x = tempX;
+    var action = In[positionOfChrom];
+    // if(action==0) score += 0.1;
+    var tempX = bar.x+action*30; //左右に30ピクセルまたは動かない
+    if (tempX<p.r) tempX = p.r; //左の壁に当たったら、それ以上左へは行かない
+    else if (tempX>w-p.r) tempX = w-p.r; //右の壁に当たったらそれ以上右へは行かない
+    bar.x = tempX;
   };
 
   function d(ID){ return document.getElementById(ID);}
@@ -100,7 +97,6 @@ var recordIndevidual;
   var timer;
   var paused = false, gameOver = false, gameEnded = true;
   // var numberOfBalls = 0; //使用したボールの数
-  var numberOfFrames = 0; //かかったフレーム数（÷33＝時間（秒））
   var graph = d('graph'), graph2 = d('graph2');
   var g = graph.getContext('2d'), g2 = graph2.getContext('2d');
   var w = 600, h = 400;
@@ -158,7 +154,7 @@ var recordIndevidual;
     if(!isFinish){
       next_individual();
     }
-    numberOfBreakedBlock  = score = numberOfFrames = 0;
+    numberOfBreakedBlock  = score = numberOfFrames = positionOfChrom =0;
     // score = numberOfBalls = numberOfFrames = 0;
   }
 
@@ -183,9 +179,20 @@ var recordIndevidual;
     p.y += p.vy;
 
     //バーを動かす
-    if(isFinish){moveBar(individual[best[1]]);}
-    else{moveBar(individual[count_n]);}
-
+    if(numberOfFrames % 10 == 0){
+      if(positionOfChrom >= chrom){
+        console.error("遺伝子長が短すぎます");
+        return;
+      }
+      if(isFinish){moveBar(individual[best[1]]);
+        // console.log(positionOfChrom);
+      
+      }
+      else{moveBar(individual[count_n]);
+    }
+      positionOfChrom++;
+    }
+    
 
     //ここから衝突判定。まずはブロック
     if (p.y>=280){
@@ -221,10 +228,13 @@ var recordIndevidual;
     if (p.x>w-p.r){ p.x = w-p.r; p.vx *= -1;} //right
     if (p.x<p.r){   p.x = p.r; p.vx *= -1;} //left
     if (p.y>h-p.r){ p.y = h-p.r; p.vy *= -1;} //up
+    score+=scoreByPosition(p_bar);
+    // else if(p_bar<440){score += 0.05;}
+    // else if(p_bar<540){score -= 0.05;}
     if (p.y<p.r+bar.y){
       var p_bar = Math.abs(p.x-bar.x);
       if (!gameOver && p_bar<=bar.L){
-        score += 1;
+        // score += 1;
         drawBG();
         var X = (p.x>bar.x) ? 1 : -1; //衝突点のバーの法線ベクトル(X,1);
         if (p_bar<=bar.L-bar.edge) X = 0; //バーの中央
@@ -275,29 +285,7 @@ var recordIndevidual;
     g2.restore();
   };
 
-  function next_individual(){
-    if(count_ge == GENERATION && count_n == N-1){
-      isFinish = true;
-      var sortedEval = sortEvaluation(individual);
-      saveTmp(sortedEval);
-      best = [sortedEval[0][0],sortedEval[0][1]];
-      count_ge = GENERATION;
-      console.log(best);
-      count_n = best[1];
-      return;
-    }
-    tmp = [score,numberOfFrames];
-    // console.log("tuuka");
-    recordIndevidual[count_n] = tmp;
-    count_n++;
-    if(count_n == N){
-      evolve();
-      count_ge++;
-      //--- 初期化
-      count_n = 0;
-      console.log(recordIndevidual);
-    } 
-  }
+
 
 
 
@@ -319,8 +307,14 @@ var recordIndevidual;
     isFinish = true;
 
     //操作をGENERATION回繰り返す
-    console.log(recordIndevidual[0][0]);
+    // console.log(recordIndividual[0][0]);
     loopForEvolve();
+    
+    // 各個体ごとに個体の状態を表示
+    console.log("個体ごとの配列",toByIndividual());
+    console.log("世代ごとの配列",recordIndividual);
+    
+    
     reset();
     drawBG();
     mainLoop();

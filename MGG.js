@@ -9,7 +9,7 @@ function MGG_crossover(CHILDLEN,r1,r2,individual){
     
     var child = new Array(CHILDLEN);
     for(var n=0;n<CHILDLEN;n++){
-    child[n] = new Array(chrom);
+      child[n] = new Array(chrom);
     };
     for(var c=0;c<chrom;c++){
       var parent=[individual[r1][c],individual[r2][c]];
@@ -44,7 +44,7 @@ function MGG_crossover(CHILDLEN,r1,r2,individual){
         child[9][c] = parent[1];
       };
     };
-    return child; 
+    return child;   
   
 }
 

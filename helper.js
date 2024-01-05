@@ -20,13 +20,13 @@
     count_n = 0;
     count_ge = 1;
     numberOfBreakedBlock = 0;
-    recordIndevidual = new Array(GENERATION);
+    recordIndividual = new Array(GENERATION);
     for(var i=0;i<GENERATION;i++){
-      recordIndevidual[i] = new Array(N);
-      // console.log(recordIndevidual[0]);
+      recordIndividual[i] = new Array(N);
+      // console.log(recordIndividual[0]);
     }
-    // recordIndevidual[0][0] = "test";
-    // console.log(recordIndevidual[0][0]);
+    // recordIndividual[0][0] = "test";
+    // console.log(recordIndividual[0][0]);
 
   }
 
@@ -35,8 +35,22 @@
     for(var n=0;n<N;n++){
       individual[n] = new Array(chrom);
       for(var c=0;c<chrom;c++){
-          individual[n][c] = Math.floor(Math.random()*3) - 1;
+        individual[n][c] = Math.floor(Math.random()*3) - 1;
       };
     };
+    if(CHOICE_TYPE == "MGG-rulet"){total_count_ge=1;}
     init();
+  }
+
+  function toByIndividual(){
+    var tmp = new Array(N);
+    for(var n =0;n<N;n++){
+      tmp[n] = new Array(GENERATION);
+    }
+    for(var n=0;n<N;n++){
+      for(var g=0;g<GENERATION;g++){
+        tmp[n][g] = recordIndividual[g][n];
+      }
+    }
+    return tmp;
   }

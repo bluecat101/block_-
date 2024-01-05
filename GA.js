@@ -3,7 +3,14 @@ function simulate(In){ //--- 全ての個体に対して実行される
   while (numberOfFrames<10000){ 
     p.x += p.vx;
     p.y += p.vy;
-    moveBar(In);
+    if(numberOfFrames % 10 == 0){
+      if(positionOfChrom >= chrom){
+        console.error("遺伝子長が短すぎます");
+        return;
+      }
+      moveBar(In);
+      positionOfChrom++;
+    }
     if (p.y>=280){
       for (var i=0,I=b.x.length,hit=false; i<I; i++){
         if ((p.y-b.y[i])*p.vy<0 && Math.abs(p.x-b.x[i])<=b.w && Math.abs(p.y-b.y[i])<=b.h+p.r){
@@ -25,6 +32,11 @@ function simulate(In){ //--- 全ての個体に対して実行される
     if (p.y<p.r+bar.y){
       //--- barにあたっている
       var p_bar = Math.abs(p.x-bar.x);
+    score+=scoreByPosition(p_bar);
+
+      // if(p_bar<=bar.L){score += 1;}
+      // else if(p_bar<bar.L+100){score += 0.5;}
+      // else if(p_bar<240){score += 0.2;}
       if (p_bar<=bar.L){
         var X = (p.x>bar.x) ? 1 : -1; //衝突点のバーの法線ベクトル(X,1);
         if (p_bar<=bar.L-bar.edge) X = 0; //バーの中央
@@ -32,7 +44,7 @@ function simulate(In){ //--- 全ての個体に対して実行される
         else X *= 0.3;
         // var distance = Math.abs(p.x-bar.x);
         // numberOfBreakedBlock +=1;
-        score += 1;
+        // score += 1;
         var L = Math.sqrt(X*X+1); //法線ベクトルの長さ
         var vec = {x: X/L, y: 1/L}; //法線ベクトルの正規化
         var dot = vec.x*p.vx+vec.y*p.vy;
@@ -50,13 +62,14 @@ function simulate(In){ //--- 全ての個体に対して実行される
     };
     numberOfFrames++;
   };
-  tmp = [score,numberOfFrames];
-  // console.log(count_ge-1,count_n-1);
-  // console.log(recordIndevidual[0]);
-  // console.log(recordIndevidual[0][0]);
-
-  recordIndevidual[count_ge-1][count_n-1] =tmp;
-  // recordIndevidual[count_n] = tmp;
+  tmp = [score,positionOfChrom];
+  // console.log(individual);
+  // console.log(count_n-1);
+  // console.log(individual[count_n-1]);
+  for(var c =0;c<chrom;c++){
+    tmp.push(individual[count_n-1][c]);
+  }
+  recordIndividual[count_ge-1][count_n-1] =tmp;
 };
 
 
@@ -68,16 +81,16 @@ function loopForEvolve(){
       var sortedEval = sortEvaluation(individual);
       // // //--- 最大値の取得
       // tmp_best = getBestIn(individual);
-      saveByGeneration(sortedEval,recordIndevidual[count_ge-1]);
+      saveByGeneration(sortedEval,recordIndividual[count_ge-1]);
       best = [sortedEval[0][0],sortedEval[0][1]];
       console.log("best : ", best[0], best[1]); //--- 評価値と何番目の個体か
-      if(CHOICE_TYPE == "MGG-rulet"){    
-        if(best[0]>100){ //--- 目標値に達成しているかどうか
+      if(CHOICE_TYPE == "MGG-rulet"){
+        if(best[0]>250){ //--- 目標値に達成しているかどうか
           console.log("break");
           console.log(record.slice(-1));
           console.log(record);
           count_n = best[1];
-          count_ge = GENERATION;
+          count_ge = total_count_ge;
           // saveCSV(record);
           break;
         }else{
@@ -85,10 +98,11 @@ function loopForEvolve(){
           ge = 0;
           count_n=0;
           count_ge=1;
+          total_count_ge++;
         };
       }else{
-        console.log(record.slice(-1));
-        console.log(record);
+        // console.log(record.slice(-1));
+        // console.log(record);
         console.log("finish_calculate");
         // isFinish = true;
         count_n = best[1];
@@ -100,6 +114,7 @@ function loopForEvolve(){
     evolve();
     count_n=0;
     count_ge++;
+    total_count_ge++;
   };  
 }
 
@@ -120,7 +135,7 @@ function evolve(){
       var r2 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
       const CHILDLEN = 10;//2+2^3
       var child = MGG_crossover(CHILDLEN,r1,r2,individual);
-      var sortedChildEval = sortEvaluation(child);
+      var sortedChildEval = sortEvaluation(child,true);
       var select = MGG_choice(CHILDLEN,sortedChildEval);
       var top = [sortedChildEval[0][0],sortedChildEval[0][1]];
       MGG_selection(top,select,r1,r2,child,individual);
@@ -138,6 +153,8 @@ function evolve(){
     // console.log("choice");
     if(CHOICE_TYPE == "elite" ){elite(parent,individual,sortedEval);}
     else if(CHOICE_TYPE == "rulet"){rulet(parent,eval,individual);}
+    // console.log(parent[0])
+    // console.log(parent[1])
     //--- 交叉
     // console.log("crossover");
     if(CROSSOVER_TYPE == "single"){single_crossover(child,parent)}
@@ -148,40 +165,100 @@ function evolve(){
 
   //突然変異
   // console.log("mutation");
-  const mutantrate = 0.01;
+  var mutantrate = 0.01;
+  isSameScore =true;
+  // for(var i =)
+  // console.log(record);
+  // 10世代連続でscoreが一緒なら
+  if(record.length > 10){
+    // console.log(record.length-1,record[record.length-1])
+    for(var i=1;i<10;i++){
+      if(record[record.length-1][1] != record[record.length-1-i][1]){
+        isSameScore = false;
+        break;
+      }
+    }
+  }
+  // console.log(recordIndividual[count_ge-1]);
   for(var n=0;n<N;n++){
-    if(Math.random()<mutantrate){
-      var m = Math.floor(Math.random()*numberOfFrames);
-      var r3 = Math.floor(Math.random()*2); //--- 0 or 1
-      individual[n][m] = (individual[n][m]-r3)%3 - 1; //--- -1-> 0 or 1, 0-> -1 or 1, 1-> -1 or 0
+    if(isSameScore){
+      mutantrate = 0.5;
+      if(Math.random()<mutantrate){
+      if(Math.random()<0.8){
+        for(var i=0;i<20;i++){
+          var position = recordIndividual[count_ge-1][n][1]-10+i;
+          var r3 = Math.floor(Math.random()*2) +1; //--- 1 or 2
+          individual[n][position] = Math.floor(Math.random()*3) - 1;
+        }
+      }else{
+        var m = Math.floor(Math.random()*recordIndividual[count_ge-1][n][1]);
+        var r3 = Math.floor(Math.random()*2) +1; //--- 1 or 2
+        individual[n][m] = (individual[n][m]+r3)%3 != 2? (individual[n][m]+r3)%3 : -1;
+      }
+        // var m = Math.floor(Math.random()*20)+recordIndividual[count_ge-1][n][1]-10;
+        // var r3 = Math.floor(Math.random()*2) +1; //--- 1 or 2
+        // individual[n][m] = (individual[n][m]+r3)%3 != 2? (individual[n][m]+r3)%3 : -1;
+      }
+    }else if(Math.random()<mutantrate){
+      var m = Math.floor(Math.random()*recordIndividual[count_ge-1][n][1]);
+      var r3 = Math.floor(Math.random()*2) +1; //--- 1 or 2
+      individual[n][m] = (individual[n][m]+r3)%3 != 2? (individual[n][m]+r3)%3 : -1;
     };
   };
-  // console.log(recordIndevidual[count_ge-1]);
-  saveByGeneration(sortedEval,recordIndevidual[count_ge-1]);
-  // topScoreStatus = selfSort(recordIndevidual[count_n]);
-  // tmp = [topScoreStatus[0][0],numberOfFrames];
-  // recordIndevidual.push(tmp);
+  saveByGeneration(sortedEval,recordIndividual[count_ge-1]);
 }
 
 //誤差関数evaluation(個体[個体番号]) = ゲームスコア
-function evaluation(In){
+function evaluation(In,isChild=false){
   score = 0;
   numberOfBreakedBlock = 0;
-  count_n++;
+  if(!isChild)count_n++;
   reset();
-  simulate(In);//個体がゲームをする
-  return score//ブロック崩しのスコアを与える
+  simulate(In); //個体がゲームをする
+  return score; //ブロック崩しのスコアを与える
 };
 
-function sortEvaluation(evaluatedArray){
+// 描画する際に次の個体に進む
+function next_individual(){
+  if(count_ge == GENERATION && count_n == N-1){
+    isFinish = true;
+    var sortedEval = sortEvaluation(individual);
+    saveTmp(sortedEval);
+    best = [sortedEval[0][0],sortedEval[0][1]];
+    count_ge = GENERATION;
+    console.log(best);
+    count_n = best[1];
+    return;
+  }
+  tmp = [score,positionOfChrom];
+  recordIndividual[count_n] = tmp;
+  count_n++;
+  if(count_n == N){
+    evolve();
+    count_ge++;
+    total_count_ge++;
+    //--- 初期化
+    count_n = 0;
+    console.log(recordIndividual);
+  } 
+}
+
+
+function sortEvaluation(evaluatedArray,isChild = false){
   len = evaluatedArray.length;
   //--- 最大値の取得
   var eval = new Array(len);
   //---　各個体の評価値を取得
   for(var i=0;i<len;i++){
-    eval[i] = evaluation(evaluatedArray[i]);
+    eval[i] = evaluation(evaluatedArray[i],isChild);
   }
   var sortedEval = selfSort(eval);
   return sortedEval;
 }
 
+function scoreByPosition(p_bar){
+  if(p_bar<=bar.L){return 1;}
+  else {return 0.5-(Math.floor((p_bar-bar.L)/30)+1)/10}
+  // else if(p_bar<240){score += 0.2;}
+
+}

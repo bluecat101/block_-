@@ -25,7 +25,7 @@ function saveCSV(record){
       
     } 
   }
-  var fileName = time+"_"+N+"_"+chrom+"_"+GENERATION+".csv";
+  var fileName = time+"_"+N+"_"+chrom+"_"+total_count_ge+".csv";
   var blob =new Blob([fullText],{type:"text/csv"}); //配列に上記の文字列(str)を設定
   var link =document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -34,15 +34,15 @@ function saveCSV(record){
   // console.log("finish_save");
 }
 
-function saveByGeneration(sortedEval,recordIndevidual){
-  maxIndevidualFrame = recordIndevidual[sortedEval[0][1]][1];
+function saveByGeneration(sortedEval,recordIndividual){
+  maxIndevidualFrame = recordIndividual[sortedEval[0][1]][1];
   total =0;
   for(var n=0;n<N;n++){
     total += sortedEval[n][0];
   }
   var average = total/N;
   //　世代,最大値,最小値,平均値,最大値の使用した遺伝子長
-  tmpArray = [count_ge,sortedEval[0][0],sortedEval[sortedEval.length-1][0],average,maxIndevidualFrame];
+  tmpArray = [total_count_ge,sortedEval[0][0],sortedEval[sortedEval.length-1][0],average,maxIndevidualFrame];
   record.push(tmpArray);
 }
 
