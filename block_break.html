@@ -59,10 +59,10 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
 var N = 100;//個体数
 var individual = new Array(N);
 var chrom = 300;//遺伝子数
-var GENERATION = 10;
+var GENERATION = 500;
 const CHOICE_TYPE = "elite" //--- "elite","MGG-rulet"."rulet"
 const CROSSOVER_TYPE = "double" //--- "single","double"
-var FRAME_RATE = 1;
+var FRAME_RATE = 5;
 const NUM_OF_CHILD =8; // 2の累乗
 var best = new Array(2);
 var isFinish = false;
@@ -74,7 +74,7 @@ var numberOfBreakedBlock;
 var recordIndividual; // 各個体についてのデータについての記録
 var numberOfFrames = 0; //かかったフレーム数（÷33＝時間（秒））
 var positionOfChrom = 0;
-if(CHOICE_TYPE == "MGG-rulet"){var total_count_ge=1;}
+var total_count_ge=1;
 
 // (function(){
   
@@ -213,13 +213,13 @@ if(CHOICE_TYPE == "MGG-rulet"){var total_count_ge=1;}
         drawBG(); // ブロックを再描画
         if (b.x.length<=0){
             // 全てのブロックが消えたかどうか
-            score+= (1000/(numberOfFrames/33));
+            score+= (10000/getSecond());
             gameEnded = true;
             d('graph2').style.cursor = 'pointer';
             g2.font = '40px Arial';
             g2.fillStyle = 'white';
             g2.fillText('SUCCESS !',200,200);
-            var timeLapse = Math.floor(100*numberOfFrames/33)/100;
+            var timeLapse = Math.floor(100*getSecond())/100;
             g2.fillText(timeLapse+' sec',220,250);
             return;
         }
@@ -335,7 +335,7 @@ if(CHOICE_TYPE == "MGG-rulet"){var total_count_ge=1;}
     d("frameRate").value = FRAME_RATE;
   });
   document.getElementById("fast").addEventListener("click", function(){
-    FRAME_RATE=Math.ceil(FRAME_RATE/2);
+    if(FRAME_RATE/2<=5){FRAME_RATE = 5;}
     d("frameRate").value = FRAME_RATE;
   });
   document.getElementById("save").addEventListener("click", function(){

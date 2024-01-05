@@ -55,3 +55,6 @@
     }
     return tmp;
   }
+  function getSecond(){
+    return numberOfFrames/(1000/33)
+  }

@@ -1,11 +1,16 @@
 var time;
 function saveCSV(record){
-  // return; 
+  var heading =["max","min","average","maxChrom","finishSecond"];
   var row = record.length;
-  if(row == 0){return;}
+  if(row == 0){
+    console.error("保存に失敗しました。保存するデータがありません。");
+    return;
+  }
   var column = record[0].length;
-  if(column != 5){return;}
-  var heading =["max","min","average","maxChrom"];
+  if(column != heading.length+1){
+    console.error("保存に失敗しました。保存するカラム数が異なります。。");
+    return;
+  }
   fullText = "RECORD";
   for(var i =0;i<heading.length;i++){
     if(i!=heading.length-1){
@@ -14,7 +19,6 @@ function saveCSV(record){
       fullText+=","+heading[i]+'\n';
     }
   }
-  // console.log(fullText);
   for(var i =0;i<row;i++){
     for(var j =0;j<column;j++){
       if(j!=column-1){
@@ -36,13 +40,14 @@ function saveCSV(record){
 
 function saveByGeneration(sortedEval,recordIndividual){
   maxIndevidualFrame = recordIndividual[sortedEval[0][1]][1];
+  maxSecond = recordIndividual[sortedEval[0][1]][2];
   total =0;
   for(var n=0;n<N;n++){
     total += sortedEval[n][0];
   }
   var average = total/N;
-  //　世代,最大値,最小値,平均値,最大値の使用した遺伝子長
-  tmpArray = [total_count_ge,sortedEval[0][0],sortedEval[sortedEval.length-1][0],average,maxIndevidualFrame];
+  //　世代,最大値,最小値,平均値,最大値の使用した遺伝子長,秒数
+  tmpArray = [total_count_ge,sortedEval[0][0],sortedEval[sortedEval.length-1][0],average,maxIndevidualFrame,maxSecond];
   record.push(tmpArray);
 }
 

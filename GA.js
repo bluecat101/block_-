@@ -1,4 +1,5 @@
 function simulate(In){ //--- 全ての個体に対して実行される
+var isAllBreak = false;
 //--- 全ての遺伝子に対して実行
   while (numberOfFrames<10000){ 
     p.x += p.vx;
@@ -6,6 +7,8 @@ function simulate(In){ //--- 全ての個体に対して実行される
     if(numberOfFrames % 10 == 0){
       if(positionOfChrom >= chrom){
         console.error("遺伝子長が短すぎます");
+        paused = true;
+        // exit();
         return;
       }
       moveBar(In);
@@ -21,11 +24,11 @@ function simulate(In){ //--- 全ての個体に対して実行される
       if (hit){
         score += 10;
         numberOfBreakedBlock +=1;
-        // reward += 10;
         b.x.splice(i,1); b.y.splice(i,1);
         if (b.x.length==0) {
-          score+= 1000/(numberOfFrames/33);
-          // console.warn(numberOfFrames/33);
+          console.error("すべてのブロックが破壊されました。");
+          score+= 10000/(getSecond());
+          isAllBreak = true;
           break;
         }
 
@@ -67,7 +70,9 @@ function simulate(In){ //--- 全ての個体に対して実行される
     };
     numberOfFrames++;
   };
+  score = Math.floor(100*score)/100
   tmp = [score,positionOfChrom];
+  tmp.push(isAllBreak?getSecond():-1);
   // console.log(individual);
   // console.log(count_n-1);
   // console.log(individual[count_n-1]);
@@ -88,7 +93,7 @@ function loopForEvolve(){
       // tmp_best = getBestIn(individual);
       saveByGeneration(sortedEval,recordIndividual[count_ge-1]);
       best = [sortedEval[0][0],sortedEval[0][1]];
-      console.log("best : ", best[0], best[1]); //--- 評価値と何番目の個体か
+      console.log("best : ", best[0], best[1],recordIndividual[recordIndividual.length - 1][best[1]][2]); //--- 評価値と何番目の個体か
       if(CHOICE_TYPE == "MGG-rulet"){
         if(best[0]>250){ //--- 目標値に達成しているかどうか
           console.log("break");
