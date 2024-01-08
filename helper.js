@@ -39,7 +39,7 @@
         individual[n][c] = Math.floor(Math.random()*3) - 1;
       };
     };
-    if(CHOICE_TYPE == "MGG-rulet"){total_count_ge=1;}
+    total_count_ge=1;
     init();
   }
 
@@ -57,4 +57,9 @@
   }
   function getSecond(){
     return numberOfFrames/(1000/33)
+  }
+
+  function getChrom(){
+    var text = d("fixedChrom").value;
+    return text.split('\t');
   }

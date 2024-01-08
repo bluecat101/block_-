@@ -44,6 +44,8 @@ canvas{ border: none; position: absolute; left: 10px; top: 10px;}
       <input type='button' class='button' id='quickTry' value='描画せずに実行'>
       <input type="button" class='button' id="try" value="描画して実行">
       <input type="button" class='button' id="reset" value="リセット"></br>
+      <input type="text" id="fixedChrom" value="">
+      <input type="button" class='button' id="chrom-btn" value="遺伝子を指定して実行"></br>
     </div>
     <span>速度(FrameRate)</span></br>
     <div class="setting">
@@ -298,6 +300,8 @@ var total_count_ge=1;
 
   // 実行された時の処理
   document.getElementById("try").addEventListener("click", function(){
+    console.warn("描画して計算します。");
+    clearTimeout(timer);
     gameEnded = false;
     init();
     reset();
@@ -306,19 +310,40 @@ var total_count_ge=1;
   })
 
   document.getElementById("quickTry").addEventListener("click", function(){
+    console.warn("描画せずに計算します。");
+    clearTimeout(timer);
     gameEnded = false;
     init();
     isFinish = true;
 
     //操作をGENERATION回繰り返す
-    // console.log(recordIndividual[0][0]);
     loopForEvolve();
     
     // 各個体ごとに個体の状態を表示
-    console.log("個体ごとの配列",toByIndividual());
-    console.log("世代ごとの配列",recordIndividual);
+    console.log("個体ごとの配列(toByIndividual())",toByIndividual());
+    console.log("世代ごとの配列(recordIndividual)",recordIndividual);
     
-    
+    reset();
+    drawBG();
+    mainLoop();
+  },false);
+
+  document.getElementById("chrom-btn").addEventListener("click", function(){
+    console.warn("遺伝子が指定して実行されました。");
+    clearTimeout(timer);
+    gameEnded = false;
+    init();
+    isFinish = true;
+    designationChrom = getChrom();
+    for(var i=0;i<designationChrom.length;i++){
+      individual[0][i]=designationChrom[i];
+    }
+    // console.log(chrom);
+    // console.log(positionOfChrom);
+    // simulate(individual[0]); // scoreの計算
+    // reset();
+    best[0]=[-1];
+    best[1]=[0];
     reset();
     drawBG();
     mainLoop();
