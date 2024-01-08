@@ -1,3 +1,4 @@
+// エリート探索で淘汰しています。
 function selection(child,individual,sorted_eval){
   // 淘汰  
   // double_crossoverの際に親と同じコピーが存在し、削除しているため個数がNUM_OF_CHILDと異なる。

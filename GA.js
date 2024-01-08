@@ -1,20 +1,18 @@
-function simulate(In){ //--- 全ての個体に対して実行される
-var isAllBreak = false;
-//--- 全ての遺伝子に対して実行
-  while (numberOfFrames<10000){ 
-    p.x += p.vx;
-    p.y += p.vy;
+/* 描画しないで計算を行う */
+function simulate(In){ 
+  var isAllBreak = false; // 全てのブロックが破壊されているかどうか
+  while (numberOfFrames<10000){
+    p.x += p.vx; // ボールのx座標の更新
+    p.y += p.vy; // ボールのy座標の更新
+    // 10フレームごとに遺伝子番号を変える
     if(numberOfFrames % 10 == 0){
-      // console.log(chrom);
-      // console.log(positionOfChrom);
-      if(positionOfChrom >= chrom){
+      if(positionOfChrom >= chrom){ // 遺伝子が短い場合
         console.error("遺伝子長が短すぎます");
         paused = true;
-        // exit();
         return;
       }
-      moveBar(In);
-      positionOfChrom++;
+      moveBar(In); // バーを動かす
+      positionOfChrom++; // 遺伝子番号を更新
     }
     if (p.y>=280){
       for (var i=0,I=b.x.length,hit=false; i<I; i++){
@@ -23,40 +21,37 @@ var isAllBreak = false;
         else if ((p.x-b.x[i])*p.vx<0 && Math.abs(p.y-b.y[i])<=b.h && Math.abs(p.x-b.x[i])<=b.w+p.r){
           p.vx *= -1; hit = true; break;}
       }
+      // ブロックが壊されたなら
       if (hit){
-        score += 10;
-        numberOfBreakedBlock +=1;
-        b.x.splice(i,1); b.y.splice(i,1);
-        if (b.x.length==0) {
+        score += 10;                      // スコアの更新
+        numberOfBreakedBlock += 1;        // 破壊されたブロックの更新
+        b.x.splice(i,1); b.y.splice(i,1); 
+        if (b.x.length==0) { // 全てのブロックが壊された時
           console.error("すべてのブロックが破壊されました。");
           score+= 10000/(getSecond());
           isAllBreak = true;
           break;
         }
-
       }
     }
-    if (p.x>w-p.r){ p.x = w-p.r; p.vx *= -1;} //right
-    if (p.x<p.r){   p.x = p.r; p.vx *= -1;} //left
-    if (p.y>h-p.r){ p.y = h-p.r; p.vy *= -1;} //up
-    if (p.y<p.r+bar.y){
-      //--- barにあたっている
-      var p_bar = Math.abs(p.x-bar.x);
-      score+=scoreByPosition(p_bar);
-
-      // if(p_bar<=bar.L){score += 1;}
-      // else if(p_bar<bar.L+100){score += 0.5;}
-      // else if(p_bar<240){score += 0.2;}
+    /* 壁にぶつかったなら */
+    if (p.x>w-p.r){ p.x = w-p.r; p.vx *= -1;} // 右の壁
+    if (p.x<p.r){p.x = p.r; p.vx *= -1;}      // 左の壁
+    if (p.y>h-p.r){ p.y = h-p.r; p.vy *= -1;} // 上の壁
+    if (p.y<p.r+bar.y){ // barにあたっている
+      var p_bar = Math.abs(p.x-bar.x); // バーとボールの位置の取得
+      score+=scoreByPosition(p_bar);   // バーとボールの位置によってスコアを決める
+      // バーに触れているなら
       if (p_bar<=bar.L){
-        var X = (p.x>bar.x) ? 1 : -1; //衝突点のバーの法線ベクトル(X,1);
+        var X = (p.x>bar.x) ? 1 : -1;     //衝突点のバーの法線ベクトル(X,1);
+        /* バーのどこに触れたか */
         if (p_bar<=bar.L-bar.edge) X = 0; //バーの中央
         else if (p_bar<=bar.L-bar.edge/3) X *= (p_bar-bar.L+bar.edge)/100; //0～0.3（バーの端は約73°）
-        else X *= 0.3;
-        // var distance = Math.abs(p.x-bar.x);
-        // numberOfBreakedBlock +=1;
-        // score += 1;
-        var L = Math.sqrt(X*X+1); //法線ベクトルの長さ
-        var vec = {x: X/L, y: 1/L}; //法線ベクトルの正規化
+        else X *= 0.3; // バーの中央と端以外
+        var L = Math.sqrt(X*X+1);   // 法線ベクトルの長さ
+        var vec = {x: X/L, y: 1/L}; // 法線ベクトルの正規化
+        
+        /* ボールの速度の更新 */
         var dot = vec.x*p.vx+vec.y*p.vy;
         p.y = p.r+bar.y;
         p.vx -= 2*dot*vec.x;
@@ -72,118 +67,91 @@ var isAllBreak = false;
     };
     numberOfFrames++;
   };
-  score = Math.floor(100*score)/100
+  score = Math.floor(100*score)/100 // スコアの更新
   tmp = [score,positionOfChrom];
-  tmp.push(isAllBreak?getSecond():-1);
-  // console.log(individual);
-  // console.log(count_n-1);
-  // console.log(individual[count_n-1]);
-  for(var c =0;c<chrom;c++){
+  /* 記録 */
+  tmp.push(isAllBreak?getSecond():-1); 
+  for(var c =0;c<chrom;c++){ // 遺伝子を保持する
     tmp.push(individual[count_n-1][c]);
   }
   recordIndividual[count_ge-1][count_n-1] =tmp;
 };
 
-
-
+/* 計算用のループ */
 function loopForEvolve(){
-  for(var ge=0;ge<GENERATION;ge++){
-    // console.log("GENETATION["+ge+"]");
-    if (ge == GENERATION-1){
-      var sortedEval = sortEvaluation(individual);
-      // // //--- 最大値の取得
-      // tmp_best = getBestIn(individual);
-      saveByGeneration(sortedEval,recordIndividual[count_ge-1]);
-      best = [sortedEval[0][0],sortedEval[0][1]];
-      console.log("best : ", best[0], best[1],recordIndividual[recordIndividual.length - 1][best[1]][2]); //--- 評価値と何番目の個体か
-      if(CHOICE_TYPE == "MGG-rulet"){
-        if(best[0]>250){ //--- 目標値に達成しているかどうか
-          console.log("break");
-          console.log(record.slice(-1));
-          console.log(record);
-          count_n = best[1];
-          count_ge = total_count_ge;
-          // saveCSV(record);
-          break;
-        }else{
-          console.log("not break");
-          ge = 0;
-          count_n=0;
-          count_ge=1;
-          total_count_ge++;
-        };
-      }else{
-        // console.log(record.slice(-1));
-        // console.log(record);
-        console.log("finish_calculate");
-        // isFinish = true;
-        count_n = best[1];
-        count_ge = GENERATION;
-        // saveCSV(record);
-        break;
-      }
+  for(var ge=0;ge<GENERATION;ge++){ // 世代の更新
+    if (ge == GENERATION-1){ // 最後の世代なら
+      var sortedEval = sortEvaluation(individual); // 各個体を評価してソートする
+      saveByGeneration(sortedEval,recordIndividual[count_ge-1]); // 個体を保存する
+      best = [sortedEval[0][0],sortedEval[0][1]]; // 最大スコアの個体を取得する
+      console.log("best : ", best[0], best[1],recordIndividual[recordIndividual.length - 1][best[1]][2]); // スコア、個体番号、秒数を出力する
+      console.warn("finish_calculate"); // 計算の終了
+      count_n = best[1]; // 個体番号を最大スコアのものにする
+      count_ge = GENERATION; // 表示する世代の更新
+      break;
     };
-    evolve();
-    count_n=0;
-    count_ge++;
-    total_count_ge++;
+    evolve(); // 進化
+    count_n=0; // 個体番号を初期化
+    count_ge++; // 世代の更新
   };  
 }
 
+/* 進化 */
 function evolve(){
+  /* 親の生成 */
   var parent = new Array(2);
-  if(CHOICE_TYPE != "MGG-rulet"){    
-    for(var i=0;i<2;i++){
-      parent[i] = new Array(chrom);
-    };
-  }
+  for(var i=0;i<2;i++){
+    parent[i] = new Array(chrom);
+  };
+
+  /* 子供の生成 */
+  var child = new Array(NUM_OF_CHILD);
+  for(var n=0;n<NUM_OF_CHILD;n++){
+      child[n] = new Array(chrom);
+  };
+
   //選択と交叉
   if(CHOICE_TYPE == "MGG-rulet"){
-    var sortedEval = sortEvaluation(individual);
-    const crossrate = 0.8;
+    var sortedEval = sortEvaluation(individual); // 評価する
+    const crossrate = 0.8; // 交叉率
     if(crossrate>Math.random()){
-      //親選択
       var r1 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
       var r2 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
-      const CHILDLEN = 10;//2+2^3
-      var child = MGG_crossover(CHILDLEN,r1,r2,individual);
-      var sortedChildEval = sortEvaluation(child,true);
-      var select = MGG_choice(CHILDLEN,sortedChildEval);
-      var top = [sortedChildEval[0][0],sortedChildEval[0][1]];
-      MGG_selection(top,select,r1,r2,child,individual);
+      for(var c=0; c < chrom;c++){
+        parent[0][c] = individual[r1][c];
+        parent[1][c] = individual[r2][c];
+      }
+      double_crossover(child,parent); // 交叉
+      var sortedChildEval = sortEvaluation(child,true); // 子供の評価
+      var select = rulet1(sortedChildEval); // 子供を選択
+      // 淘汰
+      for(var c=0;c<chrom;c++){
+        individual[r1][c] = child[sortedChildEval[0][1]][c]; // ルーレットによって選ばれたもの
+        individual[r2][c] = child[select][c]; // エリートによって選ばれたもの
+      };
     };
   }else if(CHOICE_TYPE == "elite" || CHOICE_TYPE == "rulet"){
-    //---　評価
-    //--- 最大値の取得
-    var sortedEval = sortEvaluation(individual);
+    var sortedEval = sortEvaluation(individual); // 評価
+    /* 子供の生成 */
     var child = new Array(NUM_OF_CHILD);
     for(var n=0;n<NUM_OF_CHILD;n++){
         child[n] = new Array(chrom);
     };
     
-    //--- 選択
-    // console.log("choice");
+    // 選択
     if(CHOICE_TYPE == "elite" ){elite(parent,individual,sortedEval);}
-    else if(CHOICE_TYPE == "rulet"){rulet(parent,eval,individual);}
-    // console.log(parent[0])
-    // console.log(parent[1])
-    //--- 交叉
-    // console.log("crossover");
+    else if(CHOICE_TYPE == "rulet"){rulet2(parent,sortedEval,individual);}
+    // 交叉
     if(CROSSOVER_TYPE == "single"){single_crossover(child,parent)}
     else if(CROSSOVER_TYPE == "double"){double_crossover(child,parent)}
-    // console.log("selection");
-    selection(child,individual,sortedEval);
+    // 淘汰
+    selection(child,individual,sortedEval); 
   }
 
-  //突然変異
-  // console.log("mutation");
-  var mutantrate = 0.01;
-  isSameScore =true;
-  // for(var i =)
-  // console.log(record);
-  // 10世代連続でscoreが一緒なら
+  /* 突然変異 */
+  // 10世代連続でスコアが一緒かどうかを判断する
+  var isSameScore =true;
   if(record.length > 10){
-    // console.log(record.length-1,record[record.length-1])
     for(var i=1;i<10;i++){
       if(record[record.length-1][1] != record[record.length-1-i][1]){
         isSameScore = false;
@@ -191,84 +159,86 @@ function evolve(){
       }
     }
   }
-  // console.log(recordIndividual[count_ge-1]);
+  // 個体ごとに繰り返す
   for(var n=0;n<N;n++){
-    if(isSameScore){
-      mutantrate = 0.5;
-      if(Math.random()<mutantrate){
-      if(Math.random()<0.8){
-        for(var i=0;i<20;i++){
-          var position = recordIndividual[count_ge-1][n][1]-10+i;
-          var r3 = Math.floor(Math.random()*2) +1; //--- 1 or 2
-          individual[n][position] = Math.floor(Math.random()*3) - 1;
+    if(isSameScore){ // 10世代連続でスコアが同じ
+      mutantrate = 0.5; // 突然変異率の更新
+      if(Math.random() < mutantrate){
+        if(Math.random() < 0.5){ // 処理された遺伝子の終端らへん(±10)全てを突然変異
+          /* 実際の突然変異確率は0.5*0.5*2/3= 16%(突然変異をしても同じ遺伝子になる可能性もあるため) */
+          for(var i=0;i<20;i++){
+            var position = recordIndividual[count_ge-1][n][1]-10+i;
+            individual[n][position] = Math.floor(Math.random()*3) - 1; // 遺伝子を-1~1にする
+          }
+        }else{ // 全ての遺伝子からランダムに位置を決める
+          var position = Math.floor(Math.random()*recordIndividual[count_ge-1][n][1]); // 突然変異する位置を決める
+          var r3 = Math.floor(Math.random()*2) +1;                                     // 遺伝子をどう変化させるかを決める 1 or 2
+          individual[n][position] = (individual[n][position]+r3)%3 != 2? (individual[n][position]+r3)%3 : -1; // 必ず違う遺伝子になる
         }
-      }else{
-        var m = Math.floor(Math.random()*recordIndividual[count_ge-1][n][1]);
-        var r3 = Math.floor(Math.random()*2) +1; //--- 1 or 2
-        individual[n][m] = (individual[n][m]+r3)%3 != 2? (individual[n][m]+r3)%3 : -1;
       }
-        // var m = Math.floor(Math.random()*20)+recordIndividual[count_ge-1][n][1]-10;
-        // var r3 = Math.floor(Math.random()*2) +1; //--- 1 or 2
-        // individual[n][m] = (individual[n][m]+r3)%3 != 2? (individual[n][m]+r3)%3 : -1;
-      }
-    }else if(Math.random()<mutantrate){
-      var m = Math.floor(Math.random()*recordIndividual[count_ge-1][n][1]);
-      var r3 = Math.floor(Math.random()*2) +1; //--- 1 or 2
-      individual[n][m] = (individual[n][m]+r3)%3 != 2? (individual[n][m]+r3)%3 : -1;
+    }else if(Math.random()<mutantrate){ // 10世代連続でスコアが同じでないなら
+      var position = Math.floor(Math.random()*recordIndividual[count_ge-1][n][1]); // 突然変異する位置を決める
+      var r3 = Math.floor(Math.random()*2) +1;                                     // 遺伝子をどう変化させるかを決める 1 or 2
+      individual[n][position] = (individual[n][position]+r3)%3 != 2? (individual[n][position]+r3)%3 : -1; // 必ず違う遺伝子になる
     };
   };
-  saveByGeneration(sortedEval,recordIndividual[count_ge-1]);
+  saveByGeneration(sortedEval,recordIndividual[count_ge-1]); // 記録する
 }
 
-//誤差関数evaluation(個体[個体番号]) = ゲームスコア
+// スコアを評価する
 function evaluation(In,isChild=false){
-  // score = 0;
-  // numberOfBreakedBlock = 0;
-  if(!isChild)count_n++;
-  reset();
-  simulate(In); //個体がゲームをする
-  return score; //ブロック崩しのスコアを与える
+  if(!isChild)count_n++; // 親を評価する時に個体番号を追加する
+  reset();      // リセット
+  simulate(In); // 個体がゲームをする
+  return score; // スコアを返す
 };
 
-// 描画する際に次の個体に進む
+// 描画する際に次の個体に進む(1つずつ描画する場合)
 function next_individual(){
-  if(count_ge == GENERATION && count_n == N-1){
+  if(count_ge == GENERATION && count_n == N-1){ // 全ての進化が終了したなら
     isFinish = true;
-    var sortedEval = sortEvaluation(individual);
-    saveTmp(sortedEval);
-    best = [sortedEval[0][0],sortedEval[0][1]];
-    count_ge = GENERATION;
-    console.log(best);
-    count_n = best[1];
+    var sortedEval = sortEvaluation(individual); // 評価
+    saveByGeneration(sortedEval,recordIndividual[count_ge-1]); // 記録する
+    best = [sortedEval[0][0],sortedEval[0][1]]; // 最大スコアの設定
+    count_ge = GENERATION; // 表示する世代の設定
+    console.log(best); // 最大スコアの表示
+    count_n = best[1]; // 表示する個体番号の設定
     return;
   }
+  // スコアを記録
   tmp = [score,positionOfChrom];
   recordIndividual[count_n] = tmp;
   count_n++;
-  if(count_n == N){
-    evolve();
+  if(count_n == N){ // 最後の個体なら
+    evolve(); // 進化
     count_ge++;
-    total_count_ge++;
-    //--- 初期化
-    count_n = 0;
-    console.log(recordIndividual);
+    count_n = 0; // 初期化
   } 
 }
 
 
+// 個体を評価して評価値をソートして返す
 function sortEvaluation(evaluatedArray,isChild = false){
-  len = evaluatedArray.length;
-  //--- 最大値の取得
+  len = evaluatedArray.length; // 配列の長さを取得
   var eval = new Array(len);
-  //---　各個体の評価値を取得
   for(var i=0;i<len;i++){
-    eval[i] = evaluation(evaluatedArray[i],isChild);
+    eval[i] = evaluation(evaluatedArray[i],isChild); // 個体を評価する
   }
-  var sortedEval = selfSort(eval);
+  var sortedEval = selfSort(eval); // ソート
   return sortedEval;
 }
 
-function scoreByPosition(p_bar){
-  if(p_bar<=bar.L){return 1;}
-  else {return (0.5-(Math.floor((p_bar-bar.L)/30)+1)/10)}
+function scoreByPosition(p_bar){ // バーとボールの位置によって評価する
+  if(p_bar<=bar.L){return 1;} // ボールがバーに当たったなら
+  else {return ((0.5-(Math.floor((p_bar-bar.L)/30)+1)/10)*100)/100} // 位置によって評価値を指定
+}
+
+/* indexを保持したままソートする関数 */
+function selfSort(array){
+  var len = array.length;
+  var sortArray = new Array(len);
+  for(var i=0;i<len;i++){ 
+    sortArray[i] = [array[i],i]; // arrayの値、インデックス番号の順にして作成
+  }
+  return sortArray.sort(function(a,b){return(b[0]-a[0]);}); // ソートして降順で返す
 }
