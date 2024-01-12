@@ -40,13 +40,20 @@ function double_crossover(child,parent){
 }
 /* 引数の長さの重複しない乱数を生成する */
 function getRandoms(length,upperLimit){
+  var error_count =0;
+  if(length > upperLimit) length = upperLimit;
   var rand = new Array(length);
   for(var i=0;i<length;i++){
     while(true){
+      error_count++;
       tmp = Math.floor(Math.random()*upperLimit); // 乱数生成
       if(!rand.includes(tmp)){ // 新しい乱数なら
         rand[i] = tmp;
+        error_count =0;
         break;
+      }
+      if(error_count>upperLimit*10){
+        console.error("error infinity roop");
       }
     }
   }
