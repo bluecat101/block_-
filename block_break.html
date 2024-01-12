@@ -1,0 +1,463 @@
+<!-- デザインはこちらのサイトを参考にしています。
+  https://qiita.com/simanezumi1989/items/1d9614bb03d7381bafb3
+-->
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+  <meta charset="UTF-8">
+  <title>遺伝的アルゴリズム(GA)</title>
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <meta http-equiv="Content-Script-Type" content="text/javascript">
+  <meta name="robots" content="noindex,nofollow">
+  <script src="choice.js"></script>
+  <script src="selection.js"></script>
+  <script src="crossover.js"></script>
+  <script src="save.js"></script>
+  <script src="GA.js"></script>
+  <script src="helper.js"></script>
+  <style type="text/css">
+
+  body{ -moz-user-select: none; -webkit-user-select: none; -ms-user-select: none; font-size: 20px;}
+  canvas{ border: none; position: absolute; left: 10px; top: 10px;}
+  #graph2{ cursor: pointer;}
+  #data{ position: relative; top: 410px;}
+  .setting{ position: relative; left: 20px;}
+  .status{ width: 70px; font-size: inherit;}
+  .button{ font-size: inherit;}
+
+  </style>
+  </head>
+  <body>
+
+  <!-- デザイン -->
+  <canvas id='graph'></canvas>  <!-- 初期画面用、バーとボール用-->
+  <canvas id='graph2'></canvas> <!-- ブロック-->
+  <div id='data'>
+    <span>状態</span></br>
+    <!-- 設定 -->
+    <div class="setting">
+      世代数 <input type="text" id="generation" class="status" value="">
+      個体数 <input type="text" id="individual" class="status" value="">
+      遺伝子長  <input type="text" id="chrom" class="status" value=""><br>
+      交叉率(%) <input type="text" id="crossrate" class="status" value="">
+      突然変異率(%) <input type="text" id="mutantrate" class="status" value="">
+    </div>
+    <!-- 実行方法 -->
+    <span>実行</span></br>
+    <div class="setting">
+      <input type='button' class='button' id='quickTry' value='描画せずに実行'> <!-- 最後のみ描画する -->
+      <input type="button" class='button' id="try" value="描画して実行"> <!-- 1個体ずつ描画する -->
+      <input type="button" class='button' id="selfRun" value="自分で操作"> <!-- GAを行わない -->
+      <input type="button" class='button' id="reset" value="リセット"></br> <!-- リセット -->
+      <input type="text" id="fixedChrom" value="">
+      <input type="button" class='button' id="chrom-btn" value="遺伝子を指定して実行"></br> <!-- 遺伝子の配列を入力する -->
+    </div>
+    <!-- フレームレート(5より小さくはならない) -->
+    <span>速度(FrameRate)</span></br>
+    <div class="setting">
+      <input type="text" id="frameRate" value="">
+      <input type='button' class='button' id='frameRateDecide' value='決定'></br> 
+      <input type='button' class='button' id='slow' value='<<遅く'>
+      <input type="button" class='button' id="fast" value="速く>>"></br> 
+    </div>
+
+    <!-- データをCSVファイルで保存する -->
+    <span>保存(CSV)</span></br>
+    <div class="setting">
+      <input type="button" class='button' id="save" value="保存"></br> 
+    </div>
+  </div>
+
+  <script>
+  /* GAに関する設定 */ 
+  var N = 1000;                    // 個体数
+  var individual=[];               // 個体の遺伝子
+  var chrom = 300;                 // 遺伝子数
+  var GENERATION = 500;            // 世代数
+  var crossrate = 50;            // 交叉率(世代交代率)[%]
+  var num_of_choiced;              // 淘汰される個体(交叉)の数を取得
+  var NUM_OF_CHILD;                // 子供の数(2の累乗,実際の必要数以上となる)
+  const CHOICE_TYPE = "elite";     // 選択方法 "elite","MGG-rulet","rulet"
+  const CROSSOVER_TYPE = "single"; // 交叉方法 "single","double"
+  var mutantrate = 5;              // 突然変異率[%]
+  var FRAME_RATE = 5;              // フレームレート
+  var best = new Array(2);         // 最大スコアの情報(スコアと個体番号)を格納
+  var isFinish = false;            // GAの計算が終わっているか
+  var isGA = true;                 // GAかどうか
+  var record = [];                 // 各世代の最高値等の記録
+  var count_n;                     // 現在の個体番号
+  var count_ge;                    // 現在の世代番号
+  var score;                       // スコア
+  var numberOfBreakedBlock;        // 壊したブロック数
+  var recordIndividual;            // 各個体についてのデータについての記録
+  var numberOfFrames;              // フレーム数（フレームレートが30の時に ÷33＝時間（秒））
+  var positionOfChrom;             // 実行する遺伝子番号
+
+  /* 設定の確認 */
+  // if(N<NUM_OF_CHILD){console.error("子供の数が多すぎます。");}
+  if(GENERATION == 0){console.error("世代数は1以上にする必要があります。");}
+  else if(N == 0){console.error("個体数は1以上にする必要があります。");}
+
+  function d(ID){ return document.getElementById(ID);} // 表示しているデータの取得
+  
+  // 表示の更新
+  d("generation").value = GENERATION;
+  d("individual").value = N;
+  d("crossrate").value = crossrate;
+  d("mutantrate").value = mutantrate;
+  d("chrom").value = chrom;
+  d("frameRate").value = FRAME_RATE;
+
+  /* 描画に関する設定 */
+  var timer;                // 時間オブジェクトの生成
+  var isPaused = false;     // 中断中かどうか
+  var isGameOver = false;   // ゲームオーバーかどうか
+  var isGameEnded = false;   // ゲームが終了しているかどうか(全て壊した時に起動)
+  var isGameInit = true;    // 最初の画面の時
+  var graph = d('graph');   // 初期画面用、バーとボール用
+  var graph2 = d('graph2'); // ブロック、表示
+  var g = graph.getContext('2d'), g2 = graph2.getContext('2d');
+  var w = 600, h = 400;
+  graph.width = graph2.width = w; graph.height = graph2.height = h;
+  g.fillStyle = '#000'; // 背景色
+  g.fillRect(0,0,w,h);  // 背景を描く 
+  g.save();             // キャンパスの保存
+  
+  /* 描画 */
+  g.font = '30px Arial';
+  g.fillStyle = 'white';
+  g.fillText('Select Run method',180,220);
+  g.restore(); // 退避
+
+  //バーを動かす関数
+  function moveBar(In){
+    var action = In[positionOfChrom];    // どちらに動くのかを決める
+    var tempX = bar.x+action*30;         // 左右に30ピクセルまたは動かない
+    if (tempX<p.r) tempX = p.r;          // 左の壁に当たったら、それ以上左へは行かない
+    else if (tempX>w-p.r) tempX = w-p.r; // 右の壁に当たったらそれ以上右へは行かない
+    bar.x = tempX;                       // 更新
+  };
+
+  /* pはボール。順にx座標、y座標、半径、速度x成分、速度y成分,色 */
+  var p = {x: 300, y: 20, r: 10, vx: 0, vy: 0, color: '#fff'};
+
+  /* barは棒。x座標、yは厚み、Lは長さの半分、edgeは角度が付き始める点の端からの距離 */
+  var bar = {x: 300, y: 10, L: 50, edge: 45, color: '#ff0'};
+
+  /* bはブロック。b.xとb.yがともに配列で、xy座標を示す。wはwidthで幅、hはheightで高さ。全て同じ大きさの長方形 */
+  var b = {x: [], y: [], w: 20, h: 10, color: '#88f'};
+
+  
+  /* 画面がクリックされた時 */
+  d('graph2').addEventListener('click',function(){
+    if(isGameInit){return;} // 初期画面
+    if (isGameEnded){ // ゲームが終了しているなら(全て壊した時のみ作動)
+      // もう一度実行する
+      isGameEnded = false;
+      reset();
+      drawBG();
+      mainLoop();
+    }
+    else if (isPaused){ // 中断中なら
+      // 中断を解除
+      isPaused = false;
+      drawBG();
+      mainLoop();
+    }
+    else{ // 中断させる
+      isPaused = true;
+      clearTimeout(timer);
+      g2.font = '30px Arial';
+      g2.fillStyle = 'white';
+      g2.fillText('paused',250,220);
+    }
+  },false);
+
+  /* ビューに関する初期化 */
+  function reset(){
+    bar.x = 300;
+    p.x = bar.x; p.y = bar.y+p.r;
+    var angle = Math.PI*(10)/180;
+    p.vx = Math.sin(angle)*12; p.vy = Math.cos(angle)*12; //cosとsinの反転に注意
+    b.x = []; b.y = [];
+    for (var i=0; i<3; i++) for (var j=0; j<11; j++){
+        b.x.push(w/2-10*b.w+j*b.w*2);
+        b.y.push(340-i*b.h*2);
+    }
+    if(!isFinish){
+      next_individual();
+    }
+    numberOfBreakedBlock  = score = numberOfFrames = positionOfChrom =0;
+  }
+
+  /* メインループ(描画の処理を行う) */
+  function mainLoop(){
+    g.fillStyle = '#000';
+    g.fillRect(0,0,w,h);
+    g.setTransform(1,0,0,-1,0,h);
+
+    /* ボールの描画 */
+    g.beginPath();
+    g.arc(p.x,p.y,p.r,0,2*Math.PI);
+    g.fillStyle = p.color;
+    g.fill();
+
+    /* バーの描画 */
+    g.fillStyle = bar.color;
+    g.fillRect(bar.x-bar.L+p.r+3,0,(bar.L-p.r-3)*2,bar.y); // ±3は"遊び"
+
+    /* ボールを現在の速度をもとに移動させる */
+    p.x += p.vx;
+    p.y += p.vy;
+
+    /* バーを動かす */
+    if(isGA){ // GAをしているかどうか
+      if(numberOfFrames % 10 == 0){
+        if(positionOfChrom >= chrom){ // 遺伝子長が足りない場合
+            console.error("遺伝子長が短すぎます");
+            return;
+          }
+          if(isFinish){moveBar(individual[best[1]]);} // GAが終わっている場合
+          else{moveBar(individual[count_n]);          // GAがまだ終わっていない場合
+        }
+        positionOfChrom++; // 実行する遺伝子の位置を移動させる
+      }
+    }else{
+
+    }
+    
+    
+
+    /* 衝突判定(ブロック) */
+    if (p.y>=280){
+      for (var i=0,I=b.x.length,hit=false; i<I; i++){
+        if ((p.y-b.y[i])*p.vy<0 && Math.abs(p.x-b.x[i])<=b.w && Math.abs(p.y-b.y[i])<=b.h+p.r){
+            // x座標においてボールがぶつかったかどうか
+            p.vy *= -1; hit = true; break;
+        }
+        else if ((p.x-b.x[i])*p.vx<0 &&Math.abs(p.y-b.y[i])<=b.h && Math.abs(p.x-b.x[i])<=b.w+p.r){
+            // y座標においてボールがぶつかったかどうか
+            p.vx *= -1; hit = true; break;
+        }
+      }
+      /* ボールがブロックに当たったかどうか*/
+      if (hit){
+        numberOfBreakedBlock +=1;
+        score += 10; // 評価
+        b.x.splice(i,1); b.y.splice(i,1);
+        drawBG(); // ブロックを再描画
+
+        /* 全てのブロックが破壊されているかどうか */
+        if (b.x.length<=0){
+            score+= (10000/getSecond()); // 時間を加点する
+            
+            /* クリアされたことを描画 */
+            isGameEnded = true;
+            d('graph2').style.cursor = 'pointer';
+            g2.font = '40px Arial';
+            g2.fillStyle = 'white';
+            g2.fillText('SUCCESS !',200,200);
+            var timeLapse = Math.floor(100*getSecond())/100;
+            g2.fillText(timeLapse+' sec',220,250);
+            return;
+        }
+      }
+    }
+
+    /* 衝突判定(壁) */
+    if (p.x>w-p.r){ p.x = w-p.r; p.vx *= -1;} // 右の壁
+    if (p.x<p.r){   p.x = p.r; p.vx *= -1;}   // 左の壁
+    if (p.y>h-p.r){ p.y = h-p.r; p.vy *= -1;} // 上の壁
+    if (p.y<p.r+bar.y){
+      var p_bar = Math.abs(p.x-bar.x); // ボールとバーの距離を計算
+
+      if(!isGameOver){
+        score += scoreByPosition(p_bar); // ボールとバーの位置により加点
+        drawBG(); // スコアの再描画
+      }
+      /* ボールとバーの位置を比較 */
+      if (!isGameOver && p_bar<=bar.L){ 
+        /* ゲームが終了していない かつ ボールがバーに触れたなら */
+        drawBG();
+        var X = (p.x>bar.x) ? 1 : -1; // 衝突点のバーの法線ベクトル(X,1);
+        /* どの位置に触れているのか */
+        if (p_bar<=bar.L-bar.edge) X = 0; // バーの中央
+        else if (p_bar<=bar.L-bar.edge/3) X *= (p_bar-bar.L+bar.edge)/100; //0～0.3（バーの端は約73°）
+        else X *= 0.3; // 端でも中央でもない
+        var L = Math.sqrt(X*X+1);   // 法線ベクトルの長さ
+        var vec = {x: X/L, y: 1/L}; // 法線ベクトルの正規化
+        /* ボールの移動 */
+        var dot = vec.x*p.vx+vec.y*p.vy;
+        p.y = p.r+bar.y;
+        p.vx -= 2*dot*vec.x;
+        p.vy -= 2*dot*vec.y;
+        if (Math.abs(p.vx)/p.vy>1.5){ //角度が付き過ぎないよう調整
+          var v2 = p.vx*p.vx+p.vy*p.vy;
+          p.vy = Math.sqrt(v2/3.25);
+          p.vx = (p.vx<0) ? -p.vy*1.5 : p.vy*1.5;
+        }
+      }
+      else if (!isGameOver && p.y<p.r) isGameOver = true; // ボールが下に落ちたなら
+      else if (isGameOver && p.y<-p.r){ 
+        isGameOver = false;
+        reset();
+        numberOfFrames = -1;
+        drawBG();
+      }
+    }
+    numberOfFrames++; // フレームを加算
+    timer = setTimeout(mainLoop,FRAME_RATE); // フレームレート後に再度呼び出し
+  }
+
+  // 描画(ブロックが破壊された時またはバーに触れた時に更新する)
+  function drawBG(){
+    g2.clearRect(0,0,w,h);
+    g2.font = '20px Arial';
+    g2.fillStyle = '#fff';
+    /*上の表示の更新 */
+    g2.fillText('ブロック数:　'+numberOfBreakedBlock ,15,25);
+    g2.fillText('世代数:　'+count_ge,190,25);
+    g2.fillText('個体番号:　'+(parseInt(count_n)+1),330,25);
+    g2.fillText('Score:　'+score,470,25);
+    g2.save();
+    g2.setTransform(1,0,0,-1,0,h);
+    g2.fillStyle = '#ccf';
+    for (var i=0,I=b.x.length; i<I; i++) g2.fillRect(b.x[i]-b.w,b.y[i]-b.h,2*b.w,2*b.h);
+    g2.fillStyle = b.color; // 
+    for (var i=0; i<I; i++) g2.fillRect(b.x[i]-b.w+1,b.y[i]-b.h+1,2*b.w-2,2*b.h-2);
+    g2.restore();
+  };
+
+  /* 実行された時の処理 */ 
+  // 1個体ずつ描画する
+  document.getElementById("try").addEventListener("click", function(){
+    console.warn("描画して計算します。");
+    /* 初期化 */
+    clearTimeout(timer);
+    isGameEnded = false;
+    isGameInit = false;
+    isGA = true;
+    isFinish = false;
+    init();
+    reset();
+    drawBG();
+    mainLoop();
+  })
+
+  // 描画しないで実行
+  document.getElementById("quickTry").addEventListener("click", function(){
+    console.warn("描画せずに計算します。");
+    /* 初期化 */
+    clearTimeout(timer);
+    isGameEnded = false;
+    isGameInit = false;
+    init();
+    isFinish = true;
+    isGA = true;
+    loopForEvolve();
+    
+    // 計算結果をログに出力
+    console.log("個体ごとの配列(toByIndividual())",toByIndividual()); // 個体ごと
+    console.log("世代ごとの配列(recordIndividual)",recordIndividual); // 世代ごと
+    
+    reset();
+    drawBG();
+    mainLoop();
+  },false);
+
+  // 遺伝子を指定して実行
+  document.getElementById("chrom-btn").addEventListener("click", function(){
+    console.warn("遺伝子が指定して実行されました。");
+    /* 初期化 */
+    clearTimeout(timer);
+    isGameEnded = false;
+    isGameInit = false;
+    init();
+    isFinish = true;
+    isGA = true;
+    designationChrom = getChrom(); // 遺伝子の取得
+    for(var i=0;i<designationChrom.length;i++){
+      individual[0][i]=designationChrom[i]; // 遺伝子を設定する
+    }
+    best[0]=[-1];
+    best[1]=[0];
+    reset();
+    drawBG();
+    mainLoop();
+  },false);
+
+  // GAをしないで手動で動かす
+  document.getElementById("selfRun").addEventListener("click", function(){
+    console.warn("自分で操作します。");
+    /* 初期化 */
+    clearTimeout(timer);
+    isGameEnded = false;
+    isGameInit = false;
+    init();
+    isFinish = true;
+    isGA = false;
+    FRAME_RATE = 30; // 速さを固定する
+    document.addEventListener('keydown', keydown_ivent); // キー操作を付与する
+    reset();
+    drawBG();
+    mainLoop();
+  },false);
+
+
+  /* 表示されているボタンが押された時 */
+  // 速度の「決定」が押された時
+  document.getElementById("frameRateDecide").addEventListener("click", function(){
+    FRAME_RATE = d("frameRate").value;
+  });
+  
+  // 速度の「<<遅く」が押された時
+  document.getElementById("slow").addEventListener("click", function(){
+    FRAME_RATE *= 2;
+    d("frameRate").value = FRAME_RATE;
+  });
+
+  // 速度の「速く>>」が押された時
+  document.getElementById("fast").addEventListener("click", function(){
+    if(FRAME_RATE/2<=5){FRAME_RATE = 5;}
+    d("frameRate").value = FRAME_RATE;
+  });
+  // 保存(CSV)の「保存」が押された時
+  document.getElementById("save").addEventListener("click", function(){
+    saveCSV(record);
+  });
+
+  // 実行の「リセット」が押された時
+  document.getElementById("reset").addEventListener("click", function(){
+    clearTimeout(timer);
+    var isPaused = false, isGameOver = false, isGameEnded = true;
+    // ビューの表示
+    g.fillStyle = '#000';
+    g.fillRect(0,0,w,h);
+    g2.clearRect(0,0,w,h);
+    g2.font = '30px Arial';
+    g2.fillStyle = 'white';
+    g.fillText('Select Run method',180,220);
+    /* 初期化 */
+    console.clear();
+    console.warn("RESET");
+    individual = [];
+    isGameInit = true;
+    init();
+  });
+
+  /* キーの付与 */
+  function keydown_ivent(e) {
+    if(isGA)return;
+    var arrow =0;
+    if(e.code == 'ArrowLeft')arrow = -1;       // 左キー
+    else if (e.code == 'ArrowRight')arrow = 1; // 右キー
+    var tempX = bar.x+arrow*30;
+    if (tempX<p.r) tempX = p.r;          // 左の壁に当たったら、それ以上左へは行かない
+    else if (tempX>w-p.r) tempX = w-p.r; // 右の壁に当たったらそれ以上右へは行かない
+    bar.x = tempX;
+    return false; 
+  }
+  </script>
+  </body>
+</html>
+
