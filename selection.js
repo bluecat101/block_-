@@ -2,7 +2,6 @@
 function selection(child,individual,sorted_eval){
   // 淘汰  
   var rands = getRandoms(num_of_choiced,child.length);
-  console.log(rands);
   // 削除する子を探す
   var min = new Array(num_of_choiced);
   for(var i=0;i<num_of_choiced;i++){

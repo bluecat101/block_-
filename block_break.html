@@ -270,9 +270,11 @@
     if (p.y>h-p.r){ p.y = h-p.r; p.vy *= -1;} // 上の壁
     if (p.y<p.r+bar.y){
       var p_bar = Math.abs(p.x-bar.x); // ボールとバーの距離を計算
-      score += scoreByPosition(p_bar); // ボールとバーの位置により加点
-      drawBG(); // スコアの再描画
 
+      if(!isGameOver){
+        score += scoreByPosition(p_bar); // ボールとバーの位置により加点
+        drawBG(); // スコアの再描画
+      }
       /* ボールとバーの位置を比較 */
       if (!isGameOver && p_bar<=bar.L){ 
         /* ゲームが終了していない かつ ボールがバーに触れたなら */
