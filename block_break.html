@@ -38,7 +38,9 @@
     <div class="setting">
       世代数 <input type="text" id="generation" class="status" value="">
       個体数 <input type="text" id="individual" class="status" value="">
-      遺伝子長  <input type="text" id="chrom" class="status" value="">
+      遺伝子長  <input type="text" id="chrom" class="status" value=""><br>
+      交叉率(%) <input type="text" id="crossrate" class="status" value="">
+      突然変異率(%) <input type="text" id="mutantrate" class="status" value="">
     </div>
     <!-- 実行方法 -->
     <span>実行</span></br>
@@ -68,14 +70,16 @@
 
   <script>
   /* GAに関する設定 */ 
-  var N = 1000;                    // 個体数
+  var N = 10;                    // 個体数
   var individual=[];               // 個体の遺伝子
-  var chrom = 100;                 // 遺伝子数
-  var GENERATION = 1;              // 世代数
-  const NUM_OF_CHILD =8;           // 子供の数(2の累乗)
-  const CHOICE_TYPE = "MGG-rulet";     // 選択方法 "elite","MGG-rulet","rulet"
+  var chrom = 30;                 // 遺伝子数
+  var GENERATION = 2;            // 世代数
+  var crossrate = 50;            // 交叉率(世代交代率)[%]
+  var num_of_choiced;              // 淘汰される個体(交叉)の数を取得
+  var NUM_OF_CHILD;                // 子供の数(2の累乗,実際の必要数以上となる)
+  const CHOICE_TYPE = "elite";     // 選択方法 "elite","MGG-rulet","rulet"
   const CROSSOVER_TYPE = "double"; // 交叉方法 "single","double"
-  var mutantrate = 0.01;         // 突然変異率
+  var mutantrate = 1;              // 突然変異率[%]
   var FRAME_RATE = 5;              // フレームレート
   var best = new Array(2);         // 最大スコアの情報(スコアと個体番号)を格納
   var isFinish = false;            // GAの計算が終わっているか
@@ -90,8 +94,8 @@
   var positionOfChrom;             // 実行する遺伝子番号
 
   /* 設定の確認 */
-  if(N<NUM_OF_CHILD){console.error("子供の数が多すぎます。");}
-  else if(GENERATION == 0){console.error("世代数は1以上にする必要があります。");}
+  // if(N<NUM_OF_CHILD){console.error("子供の数が多すぎます。");}
+  if(GENERATION == 0){console.error("世代数は1以上にする必要があります。");}
   else if(N == 0){console.error("個体数は1以上にする必要があります。");}
 
   function d(ID){ return document.getElementById(ID);} // 表示しているデータの取得
@@ -99,6 +103,8 @@
   // 表示の更新
   d("generation").value = GENERATION;
   d("individual").value = N;
+  d("crossrate").value = crossrate;
+  d("mutantrate").value = mutantrate;
   d("chrom").value = chrom;
   d("frameRate").value = FRAME_RATE;
 

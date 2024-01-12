@@ -6,6 +6,8 @@ function init(){
   GENERATION = parseInt(d("generation").value); // 世代数
   N = parseInt(d("individual").value);          // 個体数
   chrom = parseInt(d("chrom").value);           // 遺伝子数
+  crossrate = parseInt(d("crossrate").value);
+  mutantrate = parseInt(d("mutantrate").value);
   FRAME_RATE = parseInt(d("frameRate").value);  // フレームレート
   getTime(); // 開始時刻を取得(保存する際のファイル名用)
 
@@ -16,6 +18,8 @@ function init(){
   numberOfBreakedBlock = 0; // 壊した数
   numberOfFrames = 0;  // フレーム数（フレームレートが30の時に ÷33＝時間（秒））
   positionOfChrom = 0; // 実行する遺伝子番号
+  num_of_choiced = N*crossrate/100; // 淘汰される個体(交叉)の数を取得
+  NUM_OF_CHILD = 2**Math.ceil(Math.log(num_of_choiced+2) / Math.log(2)); // 必要な生成する数を取得(+2はchildを作った時の先頭と最後は親と同じだから)
 
   /* 記録する配列の初期化(世代ごと) */
   recordIndividual = new Array(GENERATION); 
@@ -34,6 +38,9 @@ function init(){
     };
   }
 
+  /* 設定の確認 */
+  if(GENERATION == 0){console.error("世代数は1以上にする必要があります。");}
+  else if(N == 0){console.error("個体数は1以上にする必要があります。");}
 }
 
 

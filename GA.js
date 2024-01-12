@@ -113,7 +113,6 @@ function evolve(){
   //選択と交叉
   if(CHOICE_TYPE == "MGG-rulet"){
     var sortedEval = sortEvaluation(individual); // 評価する
-    const crossrate = 0.8; // 交叉率
     if(crossrate>Math.random()){
       var r1 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
       var r2 = Math.floor(Math.random()*N); //--- ランダムで親を選ぶ
@@ -138,12 +137,15 @@ function evolve(){
         child[n] = new Array(chrom);
     };
     
-    // 選択
-    if(CHOICE_TYPE == "elite" ){elite(parent,individual,sortedEval);}
-    else if(CHOICE_TYPE == "rulet"){rulet2(parent,sortedEval,individual);}
-    // 交叉
-    if(CROSSOVER_TYPE == "single"){single_crossover(child,parent)}
-    else if(CROSSOVER_TYPE == "double"){double_crossover(child,parent)}
+    // 選択-交叉
+    if(crossrate>Math.random()){
+      // 選択
+      if(CHOICE_TYPE == "elite" ){elite(parent,individual,sortedEval);}
+      else if(CHOICE_TYPE == "rulet"){rulet2(parent,sortedEval,individual);}
+      // 交叉
+      if(CROSSOVER_TYPE == "single"){single_crossover(child,parent)}
+      else if(CROSSOVER_TYPE == "double"){double_crossover(child,parent)}
+    }
     // 淘汰
     selection(child,individual,sortedEval); 
   }
@@ -162,8 +164,8 @@ function evolve(){
   // 個体ごとに繰り返す
   for(var n=0;n<N;n++){
     if(isSameScore){ // 10世代連続でスコアが同じ
-      mutantrate = 0.5; // 突然変異率の更新
-      if(Math.random() < mutantrate){
+      mutantrate = 50; // 突然変異率の更新
+      if(Math.random() < mutantrate/100){
         if(Math.random() < 0.5){ // 処理された遺伝子の終端らへん(±10)全てを突然変異
           /* 実際の突然変異確率は0.5*0.5*2/3= 16%(突然変異をしても同じ遺伝子になる可能性もあるため) */
           for(var i=0;i<20;i++){
@@ -176,7 +178,7 @@ function evolve(){
           individual[n][position] = (individual[n][position]+r3)%3 != 2? (individual[n][position]+r3)%3 : -1; // 必ず違う遺伝子になる
         }
       }
-    }else if(Math.random()<mutantrate){ // 10世代連続でスコアが同じでないなら
+    }else if(Math.random()<mutantrate/100){ // 10世代連続でスコアが同じでないなら
       var position = Math.floor(Math.random()*recordIndividual[count_ge-1][n][1]); // 突然変異する位置を決める
       var r3 = Math.floor(Math.random()*2) +1;                                     // 遺伝子をどう変化させるかを決める 1 or 2
       individual[n][position] = (individual[n][position]+r3)%3 != 2? (individual[n][position]+r3)%3 : -1; // 必ず違う遺伝子になる

@@ -40,7 +40,8 @@ function saveCSV(record){
   }
   
   /* 保存 */
-  var fileName = time+"_"+N+"_"+chrom+"_"+count_ge+".csv"; //ファイル名
+  // var fileName = time+"_"+N+"_"+chrom+"_"+count_ge+".csv"; //ファイル名
+  var fileName = `選択_${CHOICE_TYPE},交叉_${CROSSOVER_TYPE},交叉率${crossrate},_${mutantrate},突然変異率,世代数_${N},個体数_${GENERATION},遺伝子長_${chrom}.csv`; //ファイル名
   var blob =new Blob([fullText],{type:"text/csv"});
   var link =document.createElement('a'); // ダウンロード用のリンク生成(aタグ)
   link.href = URL.createObjectURL(blob); // ダウンロード用のリンク生成(リンク)
