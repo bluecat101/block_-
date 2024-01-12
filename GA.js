@@ -152,8 +152,9 @@ function evolve(){
 
   /* 突然変異 */
   // 10世代連続でスコアが一緒かどうかを判断する
-  var isSameScore =true;
-  if(record.length > 10){
+  var isSameScore =false;
+  if(record.length > 10){ // 10世代以上あるか
+    isSameScore = true;
     for(var i=1;i<10;i++){
       if(record[record.length-1][1] != record[record.length-1-i][1]){
         isSameScore = false;
@@ -163,7 +164,7 @@ function evolve(){
   }
   // 個体ごとに繰り返す
   for(var n=0;n<N;n++){
-    if(isSameScore){ // 10世代連続でスコアが同じ
+      if(isSameScore){ // 10世代連続でスコアが同じ
       mutantrate = 50; // 突然変異率の更新
       if(Math.random() < mutantrate/100){
         if(Math.random() < 0.5){ // 処理された遺伝子の終端らへん(±10)全てを突然変異
@@ -173,9 +174,16 @@ function evolve(){
             individual[n][position] = Math.floor(Math.random()*3) - 1; // 遺伝子を-1~1にする
           }
         }else{ // 全ての遺伝子からランダムに位置を決める
-          var position = Math.floor(Math.random()*recordIndividual[count_ge-1][n][1]); // 突然変異する位置を決める
-          var r3 = Math.floor(Math.random()*2) +1;                                     // 遺伝子をどう変化させるかを決める 1 or 2
-          individual[n][position] = (individual[n][position]+r3)%3 != 2? (individual[n][position]+r3)%3 : -1; // 必ず違う遺伝子になる
+          // 突然変異する個数を決める
+          var num_of_mutation = Math.floor(Math.random()*20); 
+          // 突然変異する数が遺伝子の範囲を超えているなら突然変異数を制限
+          if(num_of_mutation > recordIndividual[count_ge-1][n][1]){num_of_mutation = recordIndividual[count_ge-1][n][1];}
+          // 突然変異する位置を取得
+          var rands = getRandoms(num_of_mutation,recordIndividual[count_ge-1][n][1])
+          // 突然変異
+          for(var i=0;i<num_of_mutation;i++){
+            individual[n][rands[i]] = Math.floor(Math.random()*3) - 1; // 遺伝子を-1~1にする
+          }
         }
       }
     }else if(Math.random()<mutantrate/100){ // 10世代連続でスコアが同じでないなら
